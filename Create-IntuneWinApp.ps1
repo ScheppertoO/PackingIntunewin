@@ -1,8 +1,12 @@
-# Interaktive Abfrage des Input-Pfades
-$BaseInputPath = "C:\Packaging\Input"
-$BaseOutputPath = "C:\Packaging\Output"
-$ToolsPath = "C:\Tools"
-$IntuneTool = "$ToolsPath\IntuneWinAppUtil.exe"
+# Portable IntuneWin App Packaging Tool
+# Arbeitet mit relativen Pfaden - unabhängig vom Speicherort
+
+# Basis-Pfade relativ zum Skript-Ordner
+$ScriptPath = $PSScriptRoot
+$BaseInputPath = Join-Path $ScriptPath "apps"
+$BaseOutputPath = Join-Path $ScriptPath "IntunewinApps"
+$ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"
+$IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
 $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
 
 # Hilfsfunktionen
@@ -135,28 +139,79 @@ function Test-ExeUninstallParameters {
     return "/uninstall /silent"
 }
 
+function Initialize-Folders {
+    Write-Host "📁 Initialisiere Ordnerstruktur..." -ForegroundColor Cyan
+    
+    # Benötigte Ordner erstellen
+    $RequiredFolders = @($BaseInputPath, $BaseOutputPath, $ToolsPath)
+    
+    foreach ($Folder in $RequiredFolders) {
+        if (-not (Test-Path $Folder)) {
+            Write-Host "   Erstelle: $($Folder -replace [regex]::Escape($ScriptPath), '.')" -ForegroundColor Yellow
+            New-Item -ItemType Directory -Force -Path $Folder | Out-Null
+        }
+    }
+    
+    Write-Host "✅ Ordnerstruktur bereit" -ForegroundColor Green
+    Write-Host "   📂 Apps: $(Split-Path $BaseInputPath -Leaf)" -ForegroundColor Gray
+    Write-Host "   📦 Output: $(Split-Path $BaseOutputPath -Leaf)" -ForegroundColor Gray
+    Write-Host "   🔧 Tools: $(Split-Path $ToolsPath -Leaf)" -ForegroundColor Gray
+}
+
 # Tool-Verfügbarkeit prüfen
-Write-Host "🚀 Starte IntuneWin App Packaging Tool" -ForegroundColor Cyan
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "🚀 Starte Portable IntuneWin App Packaging Tool" -ForegroundColor Cyan
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "📍 Arbeitsverzeichnis: $ScriptPath" -ForegroundColor Gray
+
+# Ordnerstruktur initialisieren
+Initialize-Folders
 
 if (-not (Test-IntuneWinAppUtil)) {
     Write-Host "❌ IntuneWinAppUtil.exe konnte nicht bereitgestellt werden!" -ForegroundColor Red
     Write-Host "📋 Mögliche Lösungen:" -ForegroundColor Yellow
     Write-Host "   1. Internetverbindung prüfen" -ForegroundColor Yellow
     Write-Host "   2. Manuell von $GitHubRepo herunterladen" -ForegroundColor Yellow
-    Write-Host "   3. Tool unter $IntuneTool speichern" -ForegroundColor Yellow
+    Write-Host "   3. Tool unter $(Split-Path $IntuneTool -Leaf) speichern" -ForegroundColor Yellow
     exit 1
 }
 
+# Verfügbare Apps anzeigen
+Write-Host "`n📋 Verfügbare Apps im 'apps' Ordner:" -ForegroundColor Cyan
+$AvailableApps = Get-ChildItem -Path $BaseInputPath -Directory -ErrorAction SilentlyContinue | Sort-Object Name
+if ($AvailableApps.Count -gt 0) {
+    foreach ($App in $AvailableApps) {
+        $ExeCount = (Get-ChildItem -Path $App.FullName -Filter "*.exe" -ErrorAction SilentlyContinue).Count
+        $Status = if ($ExeCount -eq 1) { "✅" } elseif ($ExeCount -eq 0) { "❌ Keine EXE" } else { "⚠️ Mehrere EXE" }
+        Write-Host "   $Status $($App.Name)" -ForegroundColor $(if ($ExeCount -eq 1) { "Green" } elseif ($ExeCount -eq 0) { "Red" } else { "Yellow" })
+    }
+} else {
+    Write-Host "   (Keine Apps gefunden)" -ForegroundColor Gray
+    Write-Host "   💡 Tipp: Legen Sie App-Ordner mit EXE-Dateien im 'apps' Verzeichnis an" -ForegroundColor Yellow
+}
+
 # Auswahl oder Eingabe eines Unterordners
-$InputFolder = Read-Host "Gib den Namen des Unterordners ein (unter '$BaseInputPath')"
+Write-Host "`n📥 App-Auswahl:" -ForegroundColor Cyan
+$InputFolder = Read-Host "Gib den Namen des App-Ordners ein"
 $SourceFolder = Join-Path $BaseInputPath $InputFolder
 $OutputFolder = Join-Path $BaseOutputPath $InputFolder
+
+# Prüfen, ob der Ordner existiert
+if (-not (Test-Path $SourceFolder)) {
+    Write-Host "❌ App-Ordner '$InputFolder' nicht gefunden!" -ForegroundColor Red
+    Write-Host "📁 Erwarteter Pfad: $SourceFolder" -ForegroundColor Yellow
+    exit 1
+}
 
 # Prüfen, ob eine .exe vorhanden ist
 $ExeFiles = Get-ChildItem -Path $SourceFolder -Filter *.exe
 if ($ExeFiles.Count -ne 1) {
     Write-Host "❌ Es muss genau eine .exe im Verzeichnis '$SourceFolder' liegen!" -ForegroundColor Red
+    if ($ExeFiles.Count -eq 0) {
+        Write-Host "   Keine EXE-Dateien gefunden" -ForegroundColor Yellow
+    } else {
+        Write-Host "   Gefundene EXE-Dateien:" -ForegroundColor Yellow
+        $ExeFiles | ForEach-Object { Write-Host "   - $($_.Name)" -ForegroundColor Yellow }
+    }
     exit 1
 }
 
@@ -273,12 +328,14 @@ $Meta = @{
     DetectionType = "Registry (manuell konfigurieren)"
     CreatedOn = (Get-Date).ToString("yyyy-MM-dd HH:mm")
     CreatedBy = $env:USERNAME
+    ScriptVersion = "2.0"
+    WorkingDirectory = $ScriptPath
 }
 $Meta | ConvertTo-Json -Depth 3 | Set-Content -Path "$OutputFolder\metadata.json"
 
-Write-Host "`n📄 Metadaten gespeichert in: $OutputFolder\metadata.json" -ForegroundColor Green
+Write-Host "`n📄 Metadaten gespeichert in: .\IntunewinApps\$InputFolder\metadata.json" -ForegroundColor Green
 Write-Host "`n🎉 Verpackung abgeschlossen!" -ForegroundColor Green
-Write-Host "📁 Ausgabeordner: $OutputFolder" -ForegroundColor Yellow
+Write-Host "📁 Ausgabeordner: .\IntunewinApps\$InputFolder" -ForegroundColor Yellow
 
 # Ausgabe der wichtigsten Informationen für Intune
 Write-Host "`n📋 Informationen für Microsoft Intune:" -ForegroundColor Cyan
@@ -288,3 +345,5 @@ Write-Host "Install-Befehl: install.cmd"
 Write-Host "Uninstall-Befehl: uninstall.cmd"
 Write-Host "Rückgabecodes: 0 (Erfolg)" + $(if ($ExitCode -eq 3010) { ", 3010 (Neustart erforderlich)" } else { "" })
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+Write-Host "`n💡 Das Skript ist jetzt vollständig portabel und kann überall verwendet werden!" -ForegroundColor Green
