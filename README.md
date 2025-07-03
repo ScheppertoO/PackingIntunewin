@@ -274,3 +274,7 @@ This project is licensed under the MIT License.
 ---
 
 💡 **The tool is fully portable and can be used anywhere!** 🚀
+
+## 🤖 **AI Assistance**
+
+This project was developed with assistance from AI (GitHub Copilot) to enhance code quality, documentation, and user experience.

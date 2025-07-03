@@ -268,3 +268,7 @@ Dieses Projekt steht unter der MIT-Lizenz.
 ---
 
 💡 **Das Tool ist vollständig portabel und kann überall verwendet werden!** 🚀
+
+## 🤖 **KI-Unterstützung**
+
+Dieses Projekt wurde mit Unterstützung von KI (GitHub Copilot) entwickelt, um die Codequalität, Dokumentation und Benutzererfahrung zu verbessern.
