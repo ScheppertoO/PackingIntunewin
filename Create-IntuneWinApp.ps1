@@ -83,7 +83,7 @@ function Test-IntuneWinAppUtil {
             
             foreach ($Url in $DirectUrls) {
                 try {
-                    Write-Host "� Versuche: $Url" -ForegroundColor Gray
+                    Write-Host "  Versuche: $Url" -ForegroundColor Gray
                     $WebClient = New-Object System.Net.WebClient
                     $WebClient.DownloadFile($Url, $IntuneTool)
                     
