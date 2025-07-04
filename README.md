@@ -99,7 +99,8 @@ The script guides you through the process:
 🔧 Checking IntuneWinAppUtil.exe...
 ⚠️ IntuneWinAppUtil.exe not found, downloading from GitHub...
 🌐 Searching for latest version...
-📥 Downloading: IntuneWinAppUtil.exe (Version: v1.8.4)
+📥 Found: IntuneWinAppUtil.zip (Version: v1.8.6)
+📋 Tool Version: Microsoft Intune Win32 Content Prep Tool version 1.8.6.0
 ✅ Download successful! File size: 0.89 MB
 ```
 
@@ -238,7 +239,11 @@ The script uses **intelligent detection mechanisms**:
 
 - 🌐 Check internet connection
 - 🔒 Check firewall/proxy settings
-- 📥 Manual download from [Microsoft GitHub](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool)
+- 📥 The script automatically tries multiple download methods:
+  - GitHub Release ZIP files (preferred)
+  - Direct download URLs
+  - Repository raw links  
+- 🛠️ **Manual download**: Download from [Microsoft GitHub](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest) and save as `IntunewinApps\tools\IntuneWinAppUtil.exe`
 
 ### **"No EXE files found"**
 

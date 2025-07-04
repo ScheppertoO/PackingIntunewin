@@ -28,34 +28,121 @@ function Test-IntuneWinAppUtil {
     Write-Host "⚠️ IntuneWinAppUtil.exe nicht gefunden, lade von GitHub herunter..." -ForegroundColor Yellow
     
     try {
-        # GitHub API verwenden, um die neueste Release zu finden
-        $ApiUrl = "https://api.github.com/repos/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest"
+        # Versuche verschiedene Download-Methoden
+        $Downloaded = $false
+        
+        # Methode 1: GitHub Releases API (für ZIP-Dateien)
         Write-Host "🌐 Suche nach der neuesten Version..." -ForegroundColor Yellow
-        
+        $ApiUrl = "https://api.github.com/repos/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest"
         $Release = Invoke-RestMethod -Uri $ApiUrl -ErrorAction Stop
-        $DownloadUrl = $Release.assets | Where-Object { $_.name -like "*IntuneWinAppUtil.exe" } | Select-Object -First 1
         
-        if (-not $DownloadUrl) {
-            Write-Host "❌ Keine IntuneWinAppUtil.exe in der neuesten Release gefunden!" -ForegroundColor Red
-            Write-Host "📋 Verfügbare Assets:" -ForegroundColor Yellow
-            $Release.assets | ForEach-Object { Write-Host "   - $($_.name)" }
-            return $false
+        # Suche nach ZIP-Dateien in den Assets
+        $ZipAsset = $Release.assets | Where-Object { $_.name -like "*.zip" } | Select-Object -First 1
+        
+        if ($ZipAsset) {
+            Write-Host "📥 Gefunden: $($ZipAsset.name) (Version: $($Release.tag_name))" -ForegroundColor Green
+            Write-Host "🔗 Download-URL: $($ZipAsset.browser_download_url)" -ForegroundColor Gray
+            
+            # Temporäres Verzeichnis für Download
+            $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil.zip"
+            $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_Extract"
+            
+            # ZIP-Datei herunterladen
+            $WebClient = New-Object System.Net.WebClient
+            $WebClient.DownloadFile($ZipAsset.browser_download_url, $TempZip)
+            
+            # ZIP extrahieren
+            if (Test-Path $TempExtract) {
+                Remove-Item $TempExtract -Recurse -Force
+            }
+            Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
+            
+            # IntuneWinAppUtil.exe suchen
+            $ExeFile = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse | Select-Object -First 1
+            
+            if ($ExeFile) {
+                Copy-Item $ExeFile.FullName $IntuneTool -Force
+                Write-Host "✅ IntuneWinAppUtil.exe erfolgreich extrahiert!" -ForegroundColor Green
+                $Downloaded = $true
+            }
+            
+            # Aufräumen
+            if (Test-Path $TempZip) { Remove-Item $TempZip -Force }
+            if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force }
         }
         
-        Write-Host "📥 Lade herunter: $($DownloadUrl.name) (Version: $($Release.tag_name))" -ForegroundColor Green
-        Write-Host "🔗 Download-URL: $($DownloadUrl.browser_download_url)" -ForegroundColor Gray
+        # Methode 2: Direkte URLs (Fallback)
+        if (-not $Downloaded) {
+            Write-Host "⚠️ Kein ZIP in Release gefunden, versuche direkte Download-URLs..." -ForegroundColor Yellow
+            
+            # Bekannte direkte URLs (basierend auf Version 1.8.6)
+            $DirectUrls = @(
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.6/IntuneWinAppUtil.exe",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest/download/IntuneWinAppUtil.exe"
+            )
+            
+            foreach ($Url in $DirectUrls) {
+                try {
+                    Write-Host "� Versuche: $Url" -ForegroundColor Gray
+                    $WebClient = New-Object System.Net.WebClient
+                    $WebClient.DownloadFile($Url, $IntuneTool)
+                    
+                    if (Test-Path $IntuneTool) {
+                        Write-Host "✅ Download erfolgreich!" -ForegroundColor Green
+                        $Downloaded = $true
+                        break
+                    }
+                } catch {
+                    Write-Host "❌ URL fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
+                }
+            }
+        }
         
-        # Download mit Fortschrittsanzeige
-        $WebClient = New-Object System.Net.WebClient
-        $WebClient.DownloadFile($DownloadUrl.browser_download_url, $IntuneTool)
+        # Methode 3: Repo-Clone (letzte Option)
+        if (-not $Downloaded) {
+            Write-Host "⚠️ Versuche Repository-basierte Lösung..." -ForegroundColor Yellow
+            
+            # GitHub Raw-Links zu bekannten Builds versuchen
+            $RawUrls = @(
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/main/IntuneWinAppUtil.exe",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/v1.8.6/IntuneWinAppUtil.exe"
+            )
+            
+            foreach ($Url in $RawUrls) {
+                try {
+                    Write-Host "🔄 Versuche Raw-URL: $Url" -ForegroundColor Gray
+                    $WebClient = New-Object System.Net.WebClient
+                    $WebClient.DownloadFile($Url, $IntuneTool)
+                    
+                    if (Test-Path $IntuneTool) {
+                        Write-Host "✅ Download erfolgreich!" -ForegroundColor Green
+                        $Downloaded = $true
+                        break
+                    }
+                } catch {
+                    Write-Host "❌ Raw-URL fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
+                }
+            }
+        }
         
-        # Prüfen ob Download erfolgreich war
-        if (Test-Path $IntuneTool) {
+        # Erfolg prüfen
+        if ($Downloaded -and (Test-Path $IntuneTool)) {
             $FileInfo = Get-Item $IntuneTool
             Write-Host "✅ Download erfolgreich! Dateigröße: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" -ForegroundColor Green
+            
+            # Versuche Version zu ermitteln
+            try {
+                $VersionInfo = & $IntuneTool -v 2>$null
+                if ($VersionInfo) {
+                    Write-Host "📋 Tool-Version: $VersionInfo" -ForegroundColor Green
+                }
+            } catch {
+                # Version-Check optional
+            }
+            
             return $true
         } else {
-            Write-Host "❌ Download fehlgeschlagen!" -ForegroundColor Red
+            Write-Host "❌ Alle Download-Methoden fehlgeschlagen!" -ForegroundColor Red
             return $false
         }
         
