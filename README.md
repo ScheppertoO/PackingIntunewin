@@ -61,7 +61,7 @@ PackingIntunewin/
 ### **1. Clone or download repository**
 
 ```powershell
-git clone https://github.com/yourusername/PackingIntunewin.git
+git clone https://github.com/ScheppertoO/PackingIntunewin.git
 cd PackingIntunewin
 ```
 
