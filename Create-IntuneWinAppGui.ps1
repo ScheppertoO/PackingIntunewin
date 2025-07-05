@@ -10,7 +10,7 @@ $ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"
 $IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
 $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
 
-# XAML-Definition für die GUI
+# XAML-Definition fuer die GUI
 [xml]$xaml = @"
 <Window 
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -66,7 +66,7 @@ $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
                 <Button Grid.Row="0" Grid.Column="1" x:Name="btnRefreshApps">Aktualisieren</Button>
                 
                 <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="btnOpenAppFolder" 
-                        Margin="0,10,0,0" HorizontalAlignment="Left">Apps-Ordner öffnen</Button>
+                        Margin="0,10,0,0" HorizontalAlignment="Left">Apps-Ordner oeffnen</Button>
             </Grid>
         </GroupBox>
         
@@ -81,16 +81,16 @@ $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
         <GroupBox Grid.Row="3" Header="Aktionen" Margin="0,0,0,10" Padding="10">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="btnInitialize" ToolTip="Ordnerstruktur initialisieren">Initialisieren</Button>
-                <Button x:Name="btnCheckTool" ToolTip="IntuneWinAppUtil.exe überprüfen/herunterladen">Tool prüfen</Button>
+                <Button x:Name="btnCheckTool" ToolTip="IntuneWinAppUtil.exe ueberpruefen/herunterladen">Tool pruefen</Button>
                 <Button x:Name="btnCreatePackage" IsEnabled="False" Background="LightGreen">Paket erstellen</Button>
-                <Button x:Name="btnOpenOutputFolder" IsEnabled="False">Output-Ordner öffnen</Button>
+                <Button x:Name="btnOpenOutputFolder" IsEnabled="False">Output-Ordner oeffnen</Button>
             </StackPanel>
         </GroupBox>
         
         <!-- Status -->
         <GroupBox Grid.Row="4" Header="Status" Margin="0,0,0,10" Padding="10">
             <StackPanel>
-                <TextBlock x:Name="lblStatus" Text="Bereit. Bitte wähle eine App aus." TextWrapping="Wrap"/>
+                <TextBlock x:Name="lblStatus" Text="Bereit. Bitte waehle eine App aus." TextWrapping="Wrap"/>
                 <ProgressBar x:Name="progressBar" Height="15" Margin="0,5,0,0" Visibility="Collapsed"/>
             </StackPanel>
         </GroupBox>
@@ -120,7 +120,7 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'x:',''),'Name')]]") | ForE
     $elements[$name] = $window.FindName($name)
 }
 
-# Hilfsfunktionen für die GUI
+# Hilfsfunktionen fuer die GUI
 function Write-Log {
     param([string]$Message, [string]$Color = "Black")
     
@@ -147,7 +147,7 @@ function Initialize-GUI {
     # Arbeitsverzeichnis anzeigen
     $elements.lblWorkingDir.Text = "Arbeitsverzeichnis: $ScriptPath"
     
-    # Event-Handler für Buttons
+    # Event-Handler fuer Buttons
     $elements.btnInitialize.Add_Click({ Initialize-FoldersGUI })
     $elements.btnCheckTool.Add_Click({ Test-IntuneWinAppUtilGUI })
     $elements.btnCreatePackage.Add_Click({ Create-IntuneWinAppPackage })
@@ -167,7 +167,7 @@ function Initialize-GUI {
         }
     })
     
-    # ComboBox Änderung überwachen
+    # ComboBox aenderung ueberwachen
     $elements.cboAppFolder.Add_SelectionChanged({
         $selectedApp = $elements.cboAppFolder.SelectedItem
         if ($selectedApp) {
@@ -175,10 +175,10 @@ function Initialize-GUI {
             $elements.btnOpenOutputFolder.IsEnabled = $true
             $sourceFolder = Join-Path $BaseInputPath $selectedApp
             
-            # Prüfe auf EXE-Dateien
+            # Pruefe auf EXE-Dateien
             $exeFiles = Get-ChildItem -Path $sourceFolder -Filter *.exe -ErrorAction SilentlyContinue
             if ($exeFiles.Count -eq 1) {
-                Write-Log "App ausgewählt: $selectedApp (mit $($exeFiles[0].Name))" "Blue"
+                Write-Log "App ausgewaehlt: $selectedApp (mit $($exeFiles[0].Name))" "Blue"
             } 
             elseif ($exeFiles.Count -eq 0) {
                 Write-Log "WARNUNG: Keine EXE-Dateien in $selectedApp gefunden!" "Red"
@@ -203,13 +203,13 @@ function Initialize-GUI {
 function Refresh-AppList {
     $elements.cboAppFolder.Items.Clear()
     
-    # Prüfe, ob der Basis-Input-Pfad existiert
+    # Pruefe, ob der Basis-Input-Pfad existiert
     if (-not (Test-Path $BaseInputPath)) {
         Write-Log "Apps-Ordner nicht gefunden. Bitte initialisiere die Ordnerstruktur." "Red"
         return
     }
     
-    # Verfügbare App-Ordner auflisten
+    # Verfuegbare App-Ordner auflisten
     $appFolders = Get-ChildItem -Path $BaseInputPath -Directory | Sort-Object Name
     
     if ($appFolders.Count -gt 0) {
@@ -226,7 +226,7 @@ function Refresh-AppList {
 function Initialize-FoldersGUI {
     Write-Log "Initialisiere Ordnerstruktur..." "Blue"
     
-    # Benötigte Ordner erstellen
+    # Benoetigte Ordner erstellen
     $RequiredFolders = @($BaseInputPath, $BaseOutputPath, $ToolsPath)
     
     foreach ($Folder in $RequiredFolders) {
@@ -246,7 +246,7 @@ function Initialize-FoldersGUI {
 }
 
 function Test-IntuneWinAppUtilGUI {
-    Write-Log "Prüfe IntuneWinAppUtil.exe..." "Blue"
+    Write-Log "Pruefe IntuneWinAppUtil.exe..." "Blue"
     
     # Tools-Ordner erstellen falls nicht vorhanden
     if (-not (Test-Path $ToolsPath)) {
@@ -254,7 +254,7 @@ function Test-IntuneWinAppUtilGUI {
         New-Item -ItemType Directory -Force -Path $ToolsPath | Out-Null
     }
     
-    # Prüfen ob IntuneWinAppUtil.exe vorhanden ist
+    # Pruefen ob IntuneWinAppUtil.exe vorhanden ist
     if (Test-Path $IntuneTool) {
         Write-Log "IntuneWinAppUtil.exe gefunden: $IntuneTool" "Green"
         return $true
@@ -270,7 +270,7 @@ function Test-IntuneWinAppUtilGUI {
         # Versuche verschiedene Download-Methoden
         $Downloaded = $false
         
-        # Methode 1: GitHub Releases API (für ZIP-Dateien)
+        # Methode 1: GitHub Releases API (fuer ZIP-Dateien)
         Write-Log "Suche nach der neuesten Version..."
         $ApiUrl = "https://api.github.com/repos/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest"
         $Release = Invoke-RestMethod -Uri $ApiUrl -ErrorAction Stop
@@ -282,7 +282,7 @@ function Test-IntuneWinAppUtilGUI {
             Write-Log "Gefunden: $($ZipAsset.name) (Version: $($Release.tag_name))" "Green"
             Write-Log "Download-URL: $($ZipAsset.browser_download_url)" 
             
-            # Temporäres Verzeichnis für Download
+            # Temporaeres Verzeichnis fuer Download
             $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil.zip"
             $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_Extract"
             
@@ -305,7 +305,7 @@ function Test-IntuneWinAppUtilGUI {
                 $Downloaded = $true
             }
             
-            # Aufräumen
+            # Aufraeumen
             if (Test-Path $TempZip) { Remove-Item $TempZip -Force }
             if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force }
         }
@@ -337,10 +337,10 @@ function Test-IntuneWinAppUtilGUI {
             }
         }
         
-        # Erfolg prüfen
+        # Erfolg pruefen
         if ($Downloaded -and (Test-Path $IntuneTool)) {
             $FileInfo = Get-Item $IntuneTool
-            Write-Log "Download erfolgreich! Dateigröße: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
+            Write-Log "Download erfolgreich! Dateigroeße: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
             return $true
         } else {
             Write-Log "Alle Download-Methoden fehlgeschlagen!" "Red"
@@ -375,9 +375,9 @@ function Get-UninstallInfoGUI {
         [string]$ExePath
     )
     
-    Write-Log "Suche nach Deinstallationsinformationen für '$AppName'..." "Blue"
+    Write-Log "Suche nach Deinstallationsinformationen fuer '$AppName'..." "Blue"
     
-    # Registry-Pfade für installierte Programme
+    # Registry-Pfade fuer installierte Programme
     $RegistryPaths = @(
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
@@ -414,7 +414,7 @@ function Get-UninstallInfoGUI {
 function Test-ExeUninstallParametersGUI {
     param([string]$ExePath)
     
-    Write-Log "Analysiere EXE für Deinstallationsparameter..." "Blue"
+    Write-Log "Analysiere EXE fuer Deinstallationsparameter..." "Blue"
     
     # Dateiname-basierte Heuristik
     Write-Log "Analysiere Dateiname..."
@@ -439,7 +439,7 @@ function Test-ExeUninstallParametersGUI {
     # Sichere Fallback-Heuristik
     Write-Log "Keine spezifischen Parameter erkannt, verwende Standard-Heuristik" "Orange"
     
-    # Wähle häufigsten Standard basierend auf Dateiname
+    # Waehle haeufigsten Standard basierend auf Dateiname
     if ($FileName -like "*setup*") {
         $SelectedParams = "/uninstall /silent"
     }
@@ -447,7 +447,7 @@ function Test-ExeUninstallParametersGUI {
         $SelectedParams = "/remove /quiet"
     }
     else {
-        $SelectedParams = "/uninstall /silent"  # Häufigster Standard
+        $SelectedParams = "/uninstall /silent"  # Haeufigster Standard
     }
     
     Write-Log "Empfohlene Parameter: $SelectedParams" "Orange"
@@ -455,11 +455,11 @@ function Test-ExeUninstallParametersGUI {
 }
 
 function Create-IntuneWinAppPackage {
-    # Ausgewählte App holen
+    # Ausgewaehlte App holen
     $InputFolder = $elements.cboAppFolder.SelectedItem
     
     if (-not $InputFolder) {
-        Write-Log "Bitte wähle eine App aus!" "Red"
+        Write-Log "Bitte waehle eine App aus!" "Red"
         return
     }
     
@@ -467,13 +467,13 @@ function Create-IntuneWinAppPackage {
     $SourceFolder = Join-Path $BaseInputPath $InputFolder
     $OutputFolder = Join-Path $BaseOutputPath $InputFolder
     
-    # Prüfen, ob der Ordner existiert
+    # Pruefen, ob der Ordner existiert
     if (-not (Test-Path $SourceFolder)) {
         Write-Log "App-Ordner '$InputFolder' nicht gefunden!" "Red"
         return
     }
     
-    # Prüfe Tool-Verfügbarkeit
+    # Pruefe Tool-Verfuegbarkeit
     if (-not (Test-Path $IntuneTool)) {
         $toolResult = Test-IntuneWinAppUtilGUI
         if (-not $toolResult) {
@@ -482,7 +482,7 @@ function Create-IntuneWinAppPackage {
         }
     }
     
-    # Prüfen, ob eine .exe vorhanden ist
+    # Pruefen, ob eine .exe vorhanden ist
     $ExeFiles = Get-ChildItem -Path $SourceFolder -Filter *.exe
     if ($ExeFiles.Count -eq 0) {
         Write-Log "Keine .exe im Verzeichnis '$SourceFolder' gefunden!" "Red"
@@ -493,9 +493,9 @@ function Create-IntuneWinAppPackage {
     $ExePath = $ExeFiles[0].FullName
     $AppName = [System.IO.Path]::GetFileNameWithoutExtension($ExeName)
     
-    Write-Log "Starte Paketierung für $AppName..." "Blue"
+    Write-Log "Starte Paketierung fuer $AppName..." "Blue"
     
-    # Reboot-Einstellung prüfen
+    # Reboot-Einstellung pruefen
     $RebootRequired = $elements.chkRebootRequired.IsChecked
     if ($RebootRequired) {
         $ExitCode = 3010  # Soft reboot required
@@ -516,7 +516,7 @@ function Create-IntuneWinAppPackage {
             $UninstallCommand = $UninstallInfo.QuietUninstallString
             Write-Log "Verwende QuietUninstallString: $UninstallCommand" "Green"
         } else {
-            # Versuche, /quiet oder /silent zur UninstallString hinzuzufügen
+            # Versuche, /quiet oder /silent zur UninstallString hinzuzufuegen
             $UninstallString = $UninstallInfo.UninstallString
             if ($UninstallString -notmatch "/quiet|/silent|-quiet|-silent") {
                 if ($UninstallString -like "*msiexec*") {
@@ -586,7 +586,7 @@ exit /b 0
         Start-Sleep -Milliseconds 500
     }
     
-    # Job-Ergebnis prüfen
+    # Job-Ergebnis pruefen
     $jobOutput = Receive-Job -Job $job
     Remove-Job -Job $job
     
@@ -594,7 +594,7 @@ exit /b 0
     $elements.progressBar.Visibility = "Collapsed"
     $elements.progressBar.IsIndeterminate = $false
     
-    # Prüfen ob .intunewin erfolgreich erstellt wurde
+    # Pruefen ob .intunewin erfolgreich erstellt wurde
     $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" | Select-Object -First 1
     if ($IntunewinFile) {
         Write-Log ".intunewin Paket erfolgreich erstellt: $($IntunewinFile.Name)" "Green"
@@ -626,17 +626,17 @@ exit /b 0
     Write-Log "Verpackung abgeschlossen!" "Green"
     
     # Zusammenfassung
-    Write-Log "`nZusammenfassung für Intune:" "Blue"
+    Write-Log "`nZusammenfassung fuer Intune:" "Blue"
     Write-Log "====================================="
     Write-Log "App-Name: $AppName"
     Write-Log "Install-Befehl: install.cmd"
     Write-Log "Uninstall-Befehl: uninstall.cmd"
-    Write-Log "Rückgabecodes: 0 (Erfolg)" + $(if ($ExitCode -eq 3010) { ", 3010 (Neustart erforderlich)" } else { "" })
+    Write-Log "Rueckgabecodes: 0 (Erfolg)" + $(if ($ExitCode -eq 3010) { ", 3010 (Neustart erforderlich)" } else { "" })
     Write-Log "====================================="
     
-    # Frage, ob der Ausgabeordner geöffnet werden soll
+    # Frage, ob der Ausgabeordner geoeffnet werden soll
     $result = [System.Windows.Forms.MessageBox]::Show(
-        "Paket erfolgreich erstellt. Möchten Sie den Ausgabeordner öffnen?",
+        "Paket erfolgreich erstellt. Moechten Sie den Ausgabeordner oeffnen?",
         "Paket erstellt",
         [System.Windows.Forms.MessageBoxButtons]::YesNo,
         [System.Windows.Forms.MessageBoxIcon]::Information
