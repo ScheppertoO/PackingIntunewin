@@ -96,14 +96,37 @@ Das Skript führt Sie durch den Prozess:
 - 🔍 Ermittelt automatisch Deinstallations-Informationen
 - 📦 Erstellt das fertige `.intunewin` Paket
 
-### **⚠️ Ausführungsrichtlinien-Hinweis**
+### ⚠️ **Ausführungsrichtlinien-Hinweis**
 
-Dieses Tool enthält **unsignierte PowerShell-Skripte**. Das Launcher-Skript (`Start-IntuneWinTool.ps1`) setzt automatisch die Ausführungsrichtlinie auf `Bypass` nur für die **aktuelle Sitzung**. Dies ist eine temporäre Änderung, die nur die aktuelle PowerShell-Sitzung betrifft und die Sicherheitseinstellungen Ihres Systems nicht dauerhaft verändert.
+Dieses Tool enthält **unsignierte PowerShell-Skripte**. Aufgrund der Windows-Sicherheitsrichtlinien können Ausführungsfehler auftreten. Hier sind die Lösungen:
 
-Falls Sie die Skripte direkt ausführen, müssen Sie eventuell temporär unsignierte Skripte erlauben:
+#### **Lösung 1: Batch-Datei verwenden (Am einfachsten)**
+- **Doppelklick** auf `START-TOOL.bat` - behandelt automatisch die Ausführungsrichtlinie
+
+#### **Lösung 2: PowerShell-Kommandozeile**
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+# Zum Tool-Ordner navigieren
+cd "C:\Pfad\Zu\PackingIntunewin"
+
+# Mit umgangener Ausführungsrichtlinie starten
+powershell -ExecutionPolicy Bypass -File "Start-IntuneWinTool.ps1"
 ```
+
+#### **Lösung 3: Manuelle Richtlinien-Änderung**
+```powershell
+# Ausführungsrichtlinie nur für aktuelle Sitzung setzen
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+.\Start-IntuneWinTool.ps1
+```
+
+#### **Lösung 4: Direkte Skript-Ausführung**
+```powershell
+# Einzelne Skripte direkt ausführen
+powershell -ExecutionPolicy Bypass -File "German_GUI_WPF.ps1"
+powershell -ExecutionPolicy Bypass -File "ENG_GUI_WPF.ps1"
+```
+
+**Hinweis:** Diese Änderungen sind **temporär** und betreffen nur die aktuelle Sitzung. Ihre System-Sicherheitseinstellungen bleiben unverändert.
 
 Das Skript führt Sie durch den Prozess:
 
