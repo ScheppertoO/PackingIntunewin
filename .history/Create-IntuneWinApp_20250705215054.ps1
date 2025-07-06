@@ -25,89 +25,140 @@ function Test-IntuneWinAppUtil {
         return $true
     }
     
-    Write-Host "IntuneWinAppUtil.exe nicht gefunden, lade von alternativen Quellen herunter..." -ForegroundColor Yellow
+    Write-Host "IntuneWinAppUtil.exe nicht gefunden, lade von GitHub herunter..." -ForegroundColor Yellow
     
     try {
-        # TLS 1.2 aktivieren (erforderlich fuer moderne Downloads)
+        # TLS 1.2 aktivieren (erforderlich fuer moderne GitHub Downloads)
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         
         # Versuche verschiedene Download-Methoden
         $Downloaded = $false
         
-        # Methode 1: Alternative Mirror-Sites und Archive-Quellen
-        Write-Host "Versuche alternative Download-Quellen..." -ForegroundColor Yellow
-        $AlternativeUrls = @(
-            "https://archive.org/download/IntuneWinAppUtil/IntuneWinAppUtil.exe",
-            "https://github.com/MSEndpointMgr/IntuneWin32App/raw/master/Tools/IntuneWinAppUtil.exe",
-            "https://download.microsoft.com/download/8/b/e/8be61b72-ae5a-4cd9-8b01-6f6c8b8e4f8e/IntuneWinAppUtil.exe",
-            "https://aka.ms/intunewinapputildownload"
-        )
-        
-        foreach ($Url in $AlternativeUrls) {
-            try {
-                Write-Host "  Versuche: $Url" -ForegroundColor Gray
-                
-                $webClient = New-Object System.Net.WebClient
-                $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
-                $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
-                
-                $webClient.DownloadFile($Url, $IntuneTool)
-                
-                if ((Test-Path $IntuneTool) -and ((Get-Item $IntuneTool).Length -gt 100000)) {
-                    Write-Host "Download erfolgreich von: $Url" -ForegroundColor Green
-                    $Downloaded = $true
-                    break
-                } else {
-                    if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
-                }
-                
-            } catch {
-                Write-Host "URL fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
-                if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
-            }
-        }
-        
-        # Methode 2: Fallback auf GitHub Source und lokale Kompilierung (falls .NET verfuegbar)
-        if (-not $Downloaded) {
-            Write-Host "Alle direkten Downloads fehlgeschlagen, versuche Source-Code Download..." -ForegroundColor Yellow
+        # Methode 1: GitHub Releases API mit robustem Fehlerhandling
+        Write-Host "Suche nach der neuesten Version..." -ForegroundColor Yellow
+        try {
+            $ApiUrl = "https://api.github.com/repos/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest"
             
-            try {
-                $SourceUrl = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/tags/v1.8.6.zip"
-                $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil_Source_$(Get-Random).zip"
-                $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_Source_Extract_$(Get-Random)"
+            # HTTP-Client mit Timeout konfigurieren
+            $webRequest = [System.Net.HttpWebRequest]::Create($ApiUrl)
+            $webRequest.Timeout = 30000 # 30 Sekunden
+            $webRequest.UserAgent = "PowerShell-IntuneWinAppUtil-Downloader"
+            
+            $response = $webRequest.GetResponse()
+            $reader = New-Object System.IO.StreamReader($response.GetResponseStream())
+            $jsonContent = $reader.ReadToEnd()
+            $reader.Close()
+            $response.Close()
+            
+            $Release = $jsonContent | ConvertFrom-Json
+            
+            # Suche nach ZIP-Dateien in den Assets
+            $ZipAsset = $Release.assets | Where-Object { $_.name -like "*.zip" } | Select-Object -First 1
+            
+            if ($ZipAsset) {
+                Write-Host "Gefunden: $($ZipAsset.name) (Version: $($Release.tag_name))" -ForegroundColor Green
+                Write-Host "Download-URL: $($ZipAsset.browser_download_url)" -ForegroundColor Gray
                 
+                # Temporaeres Verzeichnis fuer Download
+                $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil_$(Get-Random).zip"
+                $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_Extract_$(Get-Random)"
+                
+                # ZIP-Datei mit verbessertem HTTP-Client herunterladen
                 $webClient = New-Object System.Net.WebClient
                 $webClient.Headers.Add("User-Agent", "PowerShell-IntuneWinAppUtil-Downloader")
+                $webClient.Encoding = [System.Text.Encoding]::UTF8
+                
+                # Proxy-Einstellungen uebernehmen falls vorhanden
                 $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
                 $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
                 
-                Write-Host "Lade Source-Code herunter..." -ForegroundColor Yellow
-                $webClient.DownloadFile($SourceUrl, $TempZip)
+                $webClient.DownloadFile($ZipAsset.browser_download_url, $TempZip)
                 
-                if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 10000)) {
-                    Write-Host "Source-Code erfolgreich heruntergeladen" -ForegroundColor Green
+                # Pruefen ob ZIP korrekt heruntergeladen wurde
+                if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 0)) {
+                    Write-Host "ZIP-Datei erfolgreich heruntergeladen" -ForegroundColor Green
                     
-                    # Extrahieren und nach vorkompilierten Binaries suchen
+                    # ZIP extrahieren
+                    if (Test-Path $TempExtract) {
+                        Remove-Item $TempExtract -Recurse -Force
+                    }
                     Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
                     
-                    # Suche nach bereits kompilierten EXE-Dateien im Source
-                    $ExeFiles = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse
-                    if ($ExeFiles.Count -gt 0) {
-                        Copy-Item $ExeFiles[0].FullName $IntuneTool -Force
-                        Write-Host "Vorkompilierte EXE aus Source-Code gefunden!" -ForegroundColor Green
+                    # IntuneWinAppUtil.exe suchen
+                    $ExeFile = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse | Select-Object -First 1
+                    
+                    if ($ExeFile) {
+                        Copy-Item $ExeFile.FullName $IntuneTool -Force
+                        Write-Host "IntuneWinAppUtil.exe erfolgreich extrahiert!" -ForegroundColor Green
                         $Downloaded = $true
                     } else {
-                        Write-Host "Keine vorkompilierte EXE im Source-Code gefunden" -ForegroundColor Yellow
+                        Write-Host "IntuneWinAppUtil.exe nicht in ZIP gefunden" -ForegroundColor Red
                     }
+                } else {
+                    Write-Host "ZIP-Download fehlgeschlagen oder Datei leer" -ForegroundColor Red
                 }
                 
                 # Aufraeumen
                 if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
                 if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
-                
-            } catch {
-                Write-Host "Source-Code Download fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
+            } else {
+                Write-Host "Keine ZIP-Datei in Release gefunden" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "GitHub API Fehler: $($_.Exception.Message)" -ForegroundColor Red
+        }
+        
+        # Methode 2: Aktuelle Release-URLs (verbessert)
+        if (-not $Downloaded) {
+            Write-Host "Versuche aktuelle Release-URLs..." -ForegroundColor Yellow
+            
+            # Aktuelle URLs basierend auf GitHub-Release-Struktur
+            $ReleaseUrls = @(
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.7/Microsoft.Win32.ContentPrepTool.zip",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.6/Microsoft.Win32.ContentPrepTool.zip",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/heads/master.zip"
+            )
+            
+            foreach ($Url in $ReleaseUrls) {
+                try {
+                    Write-Host "  Versuche: $Url" -ForegroundColor Gray
+                    
+                    $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil_$(Get-Random).zip"
+                    $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_Extract_$(Get-Random)"
+                    
+                    $webClient = New-Object System.Net.WebClient
+                    $webClient.Headers.Add("User-Agent", "PowerShell-IntuneWinAppUtil-Downloader")
+                    $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
+                    $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+                    
+                    $webClient.DownloadFile($Url, $TempZip)
+                    
+                    if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 1000)) {
+                        # ZIP extrahieren
+                        Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
+                        
+                        # IntuneWinAppUtil.exe rekursiv suchen
+                        $ExeFile = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse | Select-Object -First 1
+                        
+                        if ($ExeFile) {
+                            Copy-Item $ExeFile.FullName $IntuneTool -Force
+                            Write-Host "Download erfolgreich von: $Url" -ForegroundColor Green
+                            $Downloaded = $true
+                            
+                            # Aufraeumen
+                            if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
+                            if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+                            break
+                        }
+                    }
+                    
+                    # Aufraeumen bei Fehlschlag
+                    if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
+                    if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+                    
+                } catch {
+                    Write-Host "URL fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
+                }
             }
         }
         
@@ -116,17 +167,6 @@ function Test-IntuneWinAppUtil {
             $FileInfo = Get-Item $IntuneTool
             if ($FileInfo.Length -gt 100000) { # Mindestens 100KB
                 Write-Host "Download erfolgreich! Dateigroeße: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" -ForegroundColor Green
-                
-                # Version pruefen falls moeglich
-                try {
-                    $VersionInfo = & $IntuneTool -v 2>&1
-                    if ($VersionInfo -match "(\d+\.\d+\.\d+)") {
-                        Write-Host "Tool-Version: $($Matches[1])" -ForegroundColor Green
-                    }
-                } catch {
-                    # Version-Check fehlgeschlagen, aber das ist ok
-                }
-                
                 return $true
             } else {
                 Write-Host "Heruntergeladene Datei zu klein (möglicherweise korrupt)" -ForegroundColor Red
@@ -134,32 +174,17 @@ function Test-IntuneWinAppUtil {
             }
         }
         
-        # Fallback: Detaillierte manuelle Anleitung
+        # Fallback: Manuelle Anleitung
         Write-Host "Alle automatischen Download-Methoden fehlgeschlagen!" -ForegroundColor Red
-        Write-Host "" 
-        Write-Host "=== MANUELLE INSTALLATION ===" -ForegroundColor Yellow
-        Write-Host "Das Tool ist leider nicht mehr direkt von GitHub verfuegbar." -ForegroundColor Yellow
-        Write-Host "" 
-        Write-Host "OPTION 1 - Microsoft Download Center:" -ForegroundColor Cyan
-        Write-Host "1. Besuchen Sie: https://aka.ms/win32contentpreptool" -ForegroundColor White
-        Write-Host "2. Oder suchen Sie nach 'Microsoft Win32 Content Prep Tool'" -ForegroundColor White
-        Write-Host "" 
-        Write-Host "OPTION 2 - Alternative Quellen:" -ForegroundColor Cyan
-        Write-Host "1. Suchen Sie im Internet nach 'IntuneWinAppUtil.exe download'" -ForegroundColor White
-        Write-Host "2. Pruefen Sie PowerShell Gallery oder Chocolatey" -ForegroundColor White
-        Write-Host "" 
-        Write-Host "OPTION 3 - Aus vorhandenem Intune Admin Center:" -ForegroundColor Cyan
-        Write-Host "1. Loggen Sie sich in https://endpoint.microsoft.com ein" -ForegroundColor White
-        Write-Host "2. Gehen Sie zu Apps > Windows > Add > Win32 app" -ForegroundColor White
-        Write-Host "3. Laden Sie das Tool von dort herunter" -ForegroundColor White
-        Write-Host "" 
-        Write-Host "Speichern Sie die Datei unter: $ToolsPath" -ForegroundColor White
-        Write-Host "===============================" -ForegroundColor Yellow
+        Write-Host "Manuelle Anleitung:" -ForegroundColor Yellow
+        Write-Host "1. Besuchen Sie: https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases" -ForegroundColor Yellow
+        Write-Host "2. Laden Sie die neueste Version herunter" -ForegroundColor Yellow
+        Write-Host "3. Extrahieren Sie IntuneWinAppUtil.exe nach: $ToolsPath" -ForegroundColor Yellow
         return $false
         
     } catch {
         Write-Host "Kritischer Fehler beim Download: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "Bitte besuchen Sie manuell: https://aka.ms/win32contentpreptool" -ForegroundColor Yellow
+        Write-Host "Bitte besuchen Sie manuell: $GitHubRepo" -ForegroundColor Yellow
         Write-Host "Laden Sie IntuneWinAppUtil.exe herunter und speichern Sie es unter: $IntuneTool" -ForegroundColor Yellow
         return $false
     }
