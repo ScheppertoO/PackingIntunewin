@@ -1,36 +1,6 @@
 # 📦 PackingIntunewin - Portable IntuneWin App Packaging Tool
 
-A user-friendly, **fully portable** Pow### ⚠️ **Execution Policy Notice**
-
-This tool contains **unsigned PowerShell scripts**. Due to Windows security policies, you may encounter execution errors. Here are the solutions:
-
-#### **Solution 1: Use the Batch File (Easiest)**
-- **Double-click** on `START-TOOL.bat` - this automatically handles the execution policy
-
-#### **Solution 2: PowerShell Command Line**
-```powershell
-# Navigate to the tool folder
-cd "C:\Path\To\PackingIntunewin"
-
-# Run with bypassed execution policy
-powershell -ExecutionPolicy Bypass -File "Start-IntuneWinTool.ps1"
-```
-
-#### **Solution 3: Manual Policy Change**
-```powershell
-# Set execution policy for current session only
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
-.\Start-IntuneWinTool.ps1
-```
-
-#### **Solution 4: Direct Script Execution**
-```powershell
-# Run individual scripts directly
-powershell -ExecutionPolicy Bypass -File "German_GUI_WPF.ps1"
-powershell -ExecutionPolicy Bypass -File "ENG_GUI_WPF.ps1"
-```
-
-**Note:** These changes are **temporary** and only affect the current session. Your system security settings remain unchanged.tool for automatically creating Microsoft Intune `.intunewin` packages from EXE files.
+A user-friendly, **fully portable** PowerShell tool for automatically creating Microsoft Intune `.intunewin` packages from EXE files.
 
 ## 🌍 **Language / Sprache**
 
@@ -51,6 +21,39 @@ Make packaging `.exe` files into `.intunewin` apps as simple and automated as po
 - 🔍 **Error validation** - checks EXE count and folder structure
 - 💾 **Complete metadata** - optimized for Microsoft Intune
 - 🎨 **Colored output** - clear progress indication
+
+## ⚠️ **Execution Policy Notice**
+
+This tool contains **unsigned PowerShell scripts**. Due to Windows security policies, you may encounter execution errors. Here are the solutions:
+
+### **Solution 1: Use the Batch File (Easiest)**
+- **Double-click** on `START-TOOL.bat` - this automatically handles the execution policy
+
+### **Solution 2: PowerShell Command Line**
+```powershell
+# Navigate to the tool folder
+cd "C:\Path\To\PackingIntunewin"
+
+# Run with bypassed execution policy
+powershell -ExecutionPolicy Bypass -File "Start-IntuneWinTool.ps1"
+```
+
+### **Solution 3: Manual Policy Change**
+```powershell
+# Set execution policy for current session only
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+.\Start-IntuneWinTool.ps1
+```
+
+### **Solution 4: Direct Script Execution**
+
+```powershell
+# Run individual scripts directly
+powershell -ExecutionPolicy Bypass -File "German_GUI_WPF.ps1"
+powershell -ExecutionPolicy Bypass -File "ENG_GUI_WPF.ps1"
+```
+
+**Note:** These changes are **temporary** and only affect the current session. Your system security settings remain unchanged.
 
 ## 📁 **Folder Structure**
 
