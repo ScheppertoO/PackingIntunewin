@@ -58,11 +58,29 @@ PackingIntunewin/
 
 ## 🚀 **Quick Start**
 
-### **1. Clone or download repository**
+### **Option 1: Use the Launcher (Recommended)**
 
 ```powershell
+# 1. Clone or download repository
 git clone https://github.com/ScheppertoO/PackingIntunewin.git
 cd PackingIntunewin
+
+# 2. Right-click on Start-IntuneWinTool.ps1 and select "Run with PowerShell"
+# Or run in PowerShell:
+.\Start-IntuneWinTool.ps1
+```
+
+### **Option 2: Direct Script Execution**
+
+```powershell
+# 1. Clone or download repository
+git clone https://github.com/ScheppertoO/PackingIntunewin.git
+cd PackingIntunewin
+
+# 2. Run specific script directly
+.\Create-IntuneWinApp.ps1     # Command-line version
+.\German_GUI_WPF.ps1          # German GUI
+.\ENG_GUI_WPF.ps1            # English GUI
 ```
 
 ### **2. Prepare your app**
@@ -75,14 +93,7 @@ mkdir "apps\MyApp"
 copy "C:\Downloads\my-app-installer.exe" "apps\MyApp\"
 ```
 
-### **3. Run the script**
-
-```powershell
-# Start script from the main folder
-.\Create-IntuneWinApp.ps1
-```
-
-### **4. Select and configure app**
+### **3. Run and configure**
 
 The script guides you through the process:
 
@@ -90,6 +101,15 @@ The script guides you through the process:
 - ❓ Asks for app name and reboot requirements
 - 🔍 Automatically determines uninstallation information
 - 📦 Creates the ready `.intunewin` package
+
+### **⚠️ Execution Policy Notice**
+
+This tool contains **unsigned PowerShell scripts**. The launcher script (`Start-IntuneWinTool.ps1`) automatically sets the execution policy to `Bypass` for the **current session only**. This is a temporary change that only affects the current PowerShell session and does not modify your system's security settings permanently.
+
+If you run the scripts directly, you may need to temporarily allow unsigned scripts:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+```
 
 ## 🔧 **Automatic Features**
 

@@ -52,11 +52,29 @@ PackingIntunewin/
 
 ## 🚀 **Schnellstart**
 
-### **1. Repository klonen oder herunterladen**
+### **Option 1: Launcher verwenden (Empfohlen)**
 
 ```powershell
+# 1. Repository klonen oder herunterladen
 git clone https://github.com/ScheppertoO/PackingIntunewin.git
 cd PackingIntunewin
+
+# 2. Rechtsklick auf Start-IntuneWinTool.ps1 und "Mit PowerShell ausführen" wählen
+# Oder in PowerShell ausführen:
+.\Start-IntuneWinTool.ps1
+```
+
+### **Option 2: Direkte Skript-Ausführung**
+
+```powershell
+# 1. Repository klonen oder herunterladen
+git clone https://github.com/ScheppertoO/PackingIntunewin.git
+cd PackingIntunewin
+
+# 2. Spezifisches Skript direkt ausführen
+.\Create-IntuneWinApp.ps1     # Kommandozeilen-Version
+.\German_GUI_WPF.ps1          # Deutsche GUI
+.\ENG_GUI_WPF.ps1            # Englische GUI
 ```
 
 ### **2. App vorbereiten**
@@ -69,14 +87,23 @@ mkdir "apps\MeineApp"
 copy "C:\Downloads\meine-app-installer.exe" "apps\MeineApp\"
 ```
 
-### **3. Skript ausführen**
+### **3. Ausführen und konfigurieren**
 
+Das Skript führt Sie durch den Prozess:
+
+- 📋 Zeigt verfügbare Apps an
+- ❓ Fragt nach App-Name und Neustart-Anforderungen
+- 🔍 Ermittelt automatisch Deinstallations-Informationen
+- 📦 Erstellt das fertige `.intunewin` Paket
+
+### **⚠️ Ausführungsrichtlinien-Hinweis**
+
+Dieses Tool enthält **unsignierte PowerShell-Skripte**. Das Launcher-Skript (`Start-IntuneWinTool.ps1`) setzt automatisch die Ausführungsrichtlinie auf `Bypass` nur für die **aktuelle Sitzung**. Dies ist eine temporäre Änderung, die nur die aktuelle PowerShell-Sitzung betrifft und die Sicherheitseinstellungen Ihres Systems nicht dauerhaft verändert.
+
+Falls Sie die Skripte direkt ausführen, müssen Sie eventuell temporär unsignierte Skripte erlauben:
 ```powershell
-# Skript aus dem Hauptordner starten
-.\Create-IntuneWinApp.ps1
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 ```
-
-### **4. App auswählen und konfigurieren**
 
 Das Skript führt Sie durch den Prozess:
 
