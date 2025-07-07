@@ -297,52 +297,52 @@ function Test-IntuneWinAppUtilGUI {
         # TLS 1.2 aktivieren (erforderlich fuer moderne Downloads)
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         
-        # Versuche verschiedene Download-Methoden
+        # Try different download methods
         $Downloaded = $false
         
-        # Methode 1: Aktuelle und vertrauenswuerdige Download-Quellen
-        Write-Log "Versuche vertrauenswuerdige Download-Quellen..."
+        # Method 1: Current and trusted download sources
+        Write-Log "Trying trusted download sources..."
         $AlternativeUrls = @(
+            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest/download/IntuneWinAppUtil.exe",
             "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.6/IntuneWinAppUtil.exe",
             "https://github.com/MSEndpointMgr/IntuneWin32App/raw/master/Tools/IntuneWinAppUtil.exe",
-            "https://download.microsoft.com/download/8/b/e/8be61b72-ae5a-4cd9-8b01-6f6c8b8e4f8e/IntuneWinAppUtil.exe",
-            "https://archive.org/download/IntuneWinAppUtil/IntuneWinAppUtil.exe",
-            "https://aka.ms/intunewinapputildownload"
+            "https://download.microsoft.com/download/8/b/e/8be61b72-ae5a-4cd9-8b01-6f6c8b8e4f8e/IntuneWinAppUtil.exe"
         )
         
         foreach ($Url in $AlternativeUrls) {
             try {
-                Write-Log "  Versuche: $Url" 
+                Write-Log "  Trying: $Url" 
                 
                 $webClient = New-Object System.Net.WebClient
                 $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
                 $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+                $webClient.Timeout = 30000  # 30 seconds timeout
                 
                 $webClient.DownloadFile($Url, $IntuneTool)
                 
-                # Erweiterte Validierung der heruntergeladenen Datei
+                # Enhanced validation of downloaded file
                 if (Test-Path $IntuneTool) {
                     $FileInfo = Get-Item $IntuneTool
                     if ($FileInfo.Length -gt 100000) {
-                        # Funktionstest durchfuehren
+                        # Perform function test
                         try {
                             $testResult = & $IntuneTool /? 2>&1
                             if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep Tool") {
-                                Write-Log "Download und Funktionstest erfolgreich von: $Url" "Green"
-                                Write-Log "Dateigroesse: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
+                                Write-Log "Download and function test successful from: $Url" "Green"
+                                Write-Log "File size: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
                                 $Downloaded = $true
                                 break
                             } else {
-                                Write-Log "Datei heruntergeladen aber Funktionstest fehlgeschlagen" "Orange"
+                                Write-Log "File downloaded but function test failed" "Orange"
                                 Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
                             }
                         } catch {
-                            Write-Log "Datei heruntergeladen aber beschaedigt: $($_.Exception.Message)" "Orange"
+                            Write-Log "File downloaded but corrupted: $($_.Exception.Message)" "Orange"
                             Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
                         }
                     } else {
-                        Write-Log "Datei zu klein: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Orange"
+                        Write-Log "File too small: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Orange"
                         Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
                     }
                 }
@@ -353,9 +353,131 @@ function Test-IntuneWinAppUtilGUI {
             }
         }
         
-        # Methode 2: Fallback auf GitHub Source und lokale Kompilierung (falls .NET verfuegbar)
+        # Method 2: ZIP download and extraction
         if (-not $Downloaded) {
-            Write-Log "Alle direkten Downloads fehlgeschlagen, versuche Source-Code Download..." "Orange"
+            Write-Log "Direct downloads failed, trying ZIP download and extraction..." "Orange"
+            
+            $ZipUrls = @(
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/heads/master.zip",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/tags/v1.8.6.zip",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest/download/source-code.zip"
+            )
+            
+            foreach ($ZipUrl in $ZipUrls) {
+                try {
+                    Write-Log "  Trying ZIP: $ZipUrl"
+                    $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil_$(Get-Random).zip"
+                    $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_Extract_$(Get-Random)"
+                    
+                    $webClient = New-Object System.Net.WebClient
+                    $webClient.Headers.Add("User-Agent", "PowerShell-IntuneWinAppUtil-Downloader")
+                    $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
+                    $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+                    $webClient.Timeout = 60000  # 60 seconds for larger files
+                    
+                    $webClient.DownloadFile($ZipUrl, $TempZip)
+                    
+                    if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 10000)) {
+                        Write-Log "ZIP downloaded successfully, extracting..." "Green"
+                        
+                        # Extract and search for compiled binaries
+                        Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
+                        
+                        # Search for pre-compiled EXE files
+                        $ExeFiles = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse -ErrorAction SilentlyContinue
+                        
+                        if ($ExeFiles.Count -gt 0) {
+                            $FoundExe = $ExeFiles[0]
+                            Copy-Item $FoundExe.FullName $IntuneTool -Force
+                            Write-Log "Pre-compiled EXE found in source code!" "Green"
+                            
+                            # Validate the extracted file
+                            if (Test-Path $IntuneTool) {
+                                $FileInfo = Get-Item $IntuneTool
+                                if ($FileInfo.Length -gt 100000) {
+                                    try {
+                                        $testResult = & $IntuneTool /? 2>&1
+                                        if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft") {
+                                            Write-Log "Extracted file validation successful!" "Green"
+                                            $Downloaded = $true
+                                        } else {
+                                            Write-Log "Extracted file failed validation" "Orange"
+                                            Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                                        }
+                                    } catch {
+                                        Write-Log "Extracted file corrupted: $($_.Exception.Message)" "Orange"
+                                        Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                                    }
+                                } else {
+                                    Write-Log "Extracted file too small (possibly corrupted)" "Orange"
+                                    Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                                }
+                            }
+                        } else {
+                            Write-Log "No pre-compiled EXE found in source code" "Orange"
+                        }
+                    }
+                    
+                    # Cleanup
+                    if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
+                    if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+                    
+                    if ($Downloaded) { break }
+                    
+                } catch {
+                    Write-Log "ZIP download failed: $($_.Exception.Message)" "Red"
+                    if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
+                    if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+                }
+            }
+        }
+        
+        # Method 3: Alternative sources with better error handling
+        if (-not $Downloaded) {
+            Write-Log "ZIP extraction failed, trying alternative sources..." "Orange"
+            
+            $AlternativeSources = @(
+                "https://aka.ms/intunewinapputildownload",
+                "https://archive.org/download/IntuneWinAppUtil/IntuneWinAppUtil.exe"
+            )
+            
+            foreach ($AltUrl in $AlternativeSources) {
+                try {
+                    Write-Log "  Trying alternative: $AltUrl"
+                    
+                    # Use Invoke-WebRequest for better handling
+                    $response = Invoke-WebRequest -Uri $AltUrl -OutFile $IntuneTool -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+                    
+                    if (Test-Path $IntuneTool) {
+                        $FileInfo = Get-Item $IntuneTool
+                        if ($FileInfo.Length -gt 50000) {  # Lower threshold for alternative sources
+                            try {
+                                $testResult = & $IntuneTool /? 2>&1
+                                if ($testResult -match "IntuneWinAppUtil|Microsoft|Content Prep|Usage") {
+                                    Write-Log "Alternative source successful: $AltUrl" "Green"
+                                    $Downloaded = $true
+                                    break
+                                }
+                            } catch {
+                                Write-Log "Alternative file corrupted: $($_.Exception.Message)" "Orange"
+                                Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                            }
+                        } else {
+                            Write-Log "Alternative file too small" "Orange"
+                            Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                        }
+                    }
+                    
+                } catch {
+                    Write-Log "Alternative source failed: $($_.Exception.Message)" "Red"
+                    if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
+                }
+            }
+        }
+        
+        # Legacy fallback method
+        if (-not $Downloaded) {
+            Write-Log "All modern methods failed, trying legacy source code download..." "Orange"
             
             try {
                 $SourceUrl = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/tags/v1.8.6.zip"
@@ -367,16 +489,16 @@ function Test-IntuneWinAppUtilGUI {
                 $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
                 $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
                 
-                Write-Log "Lade Source-Code herunter..."
+                Write-Log "Loading source code..."
                 $webClient.DownloadFile($SourceUrl, $TempZip)
                 
                 if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 10000)) {
-                    Write-Log "Source-Code erfolgreich heruntergeladen" "Green"
+                    Write-Log "Source code downloaded successfully" "Green"
                     
-                    # Extrahieren und nach vorkompilierten Binaries suchen
+                    # Extract and search for pre-compiled binaries
                     Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
                     
-                    # Suche nach bereits kompilierten EXE-Dateien im Source
+                    # Search for pre-compiled EXE files in source
                     $ExeFiles = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse
                     if ($ExeFiles.Count -gt 0) {
                         Copy-Item $ExeFiles[0].FullName $IntuneTool -Force
@@ -423,20 +545,21 @@ function Test-IntuneWinAppUtilGUI {
         Write-Log "Alle automatischen Download-Methoden fehlgeschlagen!" "Red"
         Write-Log "" 
         Write-Log "=== MANUELLE INSTALLATION ===" "Orange"
-        Write-Log "Das Tool ist leider nicht mehr direkt von GitHub verfuegbar." "Orange"
+        Write-Log "Microsoft stellt das Tool nicht mehr direkt zum Download bereit." "Orange"
         Write-Log "" 
-        Write-Log "OPTION 1 - Microsoft Download Center:" "Yellow"
-        Write-Log "1. Besuchen Sie: https://aka.ms/win32contentpreptool" "Yellow"
-        Write-Log "2. Oder suchen Sie nach 'Microsoft Win32 Content Prep Tool'" "Yellow"
-        Write-Log "" 
-        Write-Log "OPTION 2 - Alternative Quellen:" "Yellow"
-        Write-Log "1. Suchen Sie im Internet nach 'IntuneWinAppUtil.exe download'" "Yellow"
-        Write-Log "2. Pruefen Sie PowerShell Gallery oder Chocolatey" "Yellow"
-        Write-Log "" 
-        Write-Log "OPTION 3 - Aus vorhandenem Intune Admin Center:" "Yellow"
+        Write-Log "BESTE OPTION - Intune Admin Center (EMPFOHLEN):" "Yellow"
         Write-Log "1. Loggen Sie sich in https://endpoint.microsoft.com ein" "Yellow"
-        Write-Log "2. Gehen Sie zu Apps > Windows > Add > Win32 app" "Yellow"
-        Write-Log "3. Laden Sie das Tool von dort herunter" "Yellow"
+        Write-Log "2. Gehen Sie zu Apps > Windows > Hinzufuegen > Win32-App" "Yellow"
+        Write-Log "3. Klicken Sie auf 'App-Paketdatei auswaehlen'" "Yellow"
+        Write-Log "4. Laden Sie das Tool vom dort bereitgestellten Link herunter" "Yellow"
+        Write-Log "" 
+        Write-Log "ALTERNATIVE OPTIONEN:" "Yellow"
+        Write-Log "1. Suchen Sie nach 'Microsoft Win32 Content Prep Tool'" "Yellow"
+        Write-Log "2. Pruefen Sie IT-Community Seiten (z.B. TechNet)" "Yellow"
+        Write-Log "3. Fragen Sie Ihren IT-Administrator" "Yellow"
+        Write-Log "" 
+        Write-Log "WICHTIG: Datei muss mindestens 1-3 MB gross sein!" "Red"
+        Write-Log "Dateien unter 500KB sind beschaedigt oder Platzhalter." "Red"
         Write-Log "" 
         Write-Log "Speichern Sie die Datei unter: $ToolsPath" "Yellow"
         Write-Log "===============================" "Orange"
@@ -444,13 +567,13 @@ function Test-IntuneWinAppUtilGUI {
         [System.Windows.Forms.MessageBox]::Show(
             "Automatischer Download fehlgeschlagen!`n`n" +
             "MANUELLE INSTALLATION ERFORDERLICH:`n`n" +
-            "OPTION 1 - Microsoft Download:`n" +
-            "• Besuchen Sie: https://aka.ms/win32contentpreptool`n" +
-            "• Oder suchen Sie nach 'Microsoft Win32 Content Prep Tool'`n`n" +
-            "OPTION 2 - Intune Admin Center:`n" +
+            "BESTE OPTION - Intune Admin Center:`n" +
             "• Gehen Sie zu https://endpoint.microsoft.com`n" +
-            "• Apps > Windows > Add > Win32 app`n" +
-            "• Laden Sie das Tool von dort herunter`n`n" +
+            "• Apps > Windows > Hinzufuegen > Win32-App`n" +
+            "• Klicken Sie auf 'App-Paketdatei auswaehlen'`n" +
+            "• Laden Sie das Tool vom bereitgestellten Link herunter`n`n" +
+            "WICHTIG: Datei muss 1-3 MB gross sein!`n" +
+            "Dateien unter 500KB sind beschaedigt.`n`n" +
             "Speichern Sie IntuneWinAppUtil.exe in:`n$ToolsPath",
             "Download-Fehler - Manuelle Installation erforderlich",
             [System.Windows.Forms.MessageBoxButtons]::OK,
