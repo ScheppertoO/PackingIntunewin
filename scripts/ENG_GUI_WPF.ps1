@@ -300,14 +300,121 @@ function Test-IntuneWinAppUtilGUI {
         # Try different download methods
         $Downloaded = $false
         
-        # Method 1: Current and trusted download sources
-        Write-Log "Trying trusted download sources..."
-        $AlternativeUrls = @(
-            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest/download/IntuneWinAppUtil.exe",
-            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.6/IntuneWinAppUtil.exe",
-            "https://github.com/MSEndpointMgr/IntuneWin32App/raw/master/Tools/IntuneWinAppUtil.exe",
-            "https://download.microsoft.com/download/8/b/e/8be61b72-ae5a-4cd9-8b01-6f6c8b8e4f8e/IntuneWinAppUtil.exe"
+        # Method 1: GitHub Repository - ZIP download and extraction (PRIMARY METHOD)
+        Write-Log "Trying GitHub Repository download..." "Cyan"
+        $GitHubZipUrls = @(
+            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/heads/master.zip",
+            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/tags/v1.8.6.zip",
+            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/tags/v1.8.5.zip"
         )
+        
+        foreach ($ZipUrl in $GitHubZipUrls) {
+            try {
+                Write-Log "  Downloading GitHub ZIP: $ZipUrl" "Yellow"
+                $TempZip = Join-Path $env:TEMP "IntuneWinAppUtil_GitHub_$(Get-Random).zip"
+                $TempExtract = Join-Path $env:TEMP "IntuneWinAppUtil_GitHub_Extract_$(Get-Random)"
+                
+                $webClient = New-Object System.Net.WebClient
+                $webClient.Headers.Add("User-Agent", "PowerShell-IntuneWinAppUtil-Downloader/1.0")
+                $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
+                $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+                $webClient.Timeout = 60000  # 60 seconds for ZIP files
+                
+                $webClient.DownloadFile($ZipUrl, $TempZip)
+                
+                if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 50000)) {
+                    Write-Log "GitHub ZIP downloaded successfully, extracting..." "Green"
+                    
+                    # Extract ZIP
+                    Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
+                    
+                    # Search for pre-compiled EXE files in different locations
+                    $SearchPaths = @(
+                        "IntuneWinAppUtil.exe",
+                        "*/IntuneWinAppUtil.exe", 
+                        "*/bin/IntuneWinAppUtil.exe",
+                        "*/Release/IntuneWinAppUtil.exe",
+                        "*/x64/Release/IntuneWinAppUtil.exe",
+                        "*/bin/Release/IntuneWinAppUtil.exe"
+                    )
+                    
+                    $FoundExe = $null
+                    foreach ($SearchPath in $SearchPaths) {
+                        $ExeFiles = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse -ErrorAction SilentlyContinue
+                        if ($ExeFiles.Count -gt 0) {
+                            # Find the largest EXE file (most likely to be compiled binary)
+                            $FoundExe = $ExeFiles | Sort-Object Length -Descending | Select-Object -First 1
+                            break
+                        }
+                    }
+                    
+                    if ($FoundExe -and $FoundExe.Length -gt 500000) {  # Must be at least 500KB
+                        Write-Log "Pre-compiled EXE found in GitHub: $($FoundExe.Name) ($([math]::Round($FoundExe.Length / 1KB, 2)) KB)" "Green"
+                        Copy-Item $FoundExe.FullName $IntuneTool -Force
+                        
+                        # Validate the extracted file
+                        if (Test-Path $IntuneTool) {
+                            try {
+                                $testResult = & $IntuneTool /? 2>&1
+                                if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep|Usage") {
+                                    Write-Log "GitHub download successful! Tool validated." "Green"
+                                    $Downloaded = $true
+                                } else {
+                                    Write-Log "GitHub EXE validation failed" "Orange"
+                                    Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                                }
+                            } catch {
+                                Write-Log "GitHub EXE corrupted: $($_.Exception.Message)" "Orange"
+                                Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                            }
+                        }
+                    } else {
+                        # If no large EXE found, look for any EXE files that might work
+                        $AnyExeFiles = Get-ChildItem -Path $TempExtract -Filter "*.exe" -Recurse | Where-Object { $_.Length -gt 100000 }
+                        if ($AnyExeFiles.Count -gt 0) {
+                            $BestExe = $AnyExeFiles | Sort-Object Length -Descending | Select-Object -First 1
+                            Write-Log "Alternative EXE found: $($BestExe.Name) ($([math]::Round($BestExe.Length / 1KB, 2)) KB)" "Yellow"
+                            Copy-Item $BestExe.FullName $IntuneTool -Force
+                            
+                            try {
+                                $testResult = & $IntuneTool /? 2>&1
+                                if ($testResult -match "IntuneWinAppUtil|Microsoft|Content Prep|Usage|Win32") {
+                                    Write-Log "Alternative EXE successfully validated!" "Green"
+                                    $Downloaded = $true
+                                } else {
+                                    Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                                }
+                            } catch {
+                                Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                            }
+                        } else {
+                            Write-Log "No usable EXE file found in GitHub ZIP" "Orange"
+                        }
+                    }
+                }
+                
+                # Cleanup
+                if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+                
+                if ($Downloaded) { break }
+                
+            } catch {
+                Write-Log "GitHub ZIP download failed: $($_.Exception.Message)" "Red"
+                if (Test-Path $TempZip) { Remove-Item $TempZip -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
+            }
+        }
+        
+        # Method 2: Direct download attempts (FALLBACK)
+        if (-not $Downloaded) {
+            Write-Log "GitHub download failed, trying direct downloads..." "Orange"
+            $AlternativeUrls = @(
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/latest/download/IntuneWinAppUtil.exe",
+                "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.6/IntuneWinAppUtil.exe",
+                "https://github.com/MSEndpointMgr/IntuneWin32App/raw/master/Tools/IntuneWinAppUtil.exe",
+                "https://aka.ms/intunewinapputildownload"
+            )
         
         foreach ($Url in $AlternativeUrls) {
             try {
@@ -321,16 +428,16 @@ function Test-IntuneWinAppUtilGUI {
                 
                 $webClient.DownloadFile($Url, $IntuneTool)
                 
-                # Enhanced validation of downloaded file
+                # Enhanced validation of downloaded file (corrected size for .NET tool)
                 if (Test-Path $IntuneTool) {
                     $FileInfo = Get-Item $IntuneTool
-                    if ($FileInfo.Length -gt 100000) {
+                    if ($FileInfo.Length -gt 20000) {  # At least 20KB (53.9KB is normal size)
                         # Perform function test
                         try {
                             $testResult = & $IntuneTool /? 2>&1
-                            if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep Tool") {
+                            if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep Tool|Usage") {
                                 Write-Log "Download and function test successful from: $Url" "Green"
-                                Write-Log "File size: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
+                                Write-Log "File size: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Green"
                                 $Downloaded = $true
                                 break
                             } else {
@@ -394,7 +501,7 @@ function Test-IntuneWinAppUtilGUI {
                             # Validate the extracted file
                             if (Test-Path $IntuneTool) {
                                 $FileInfo = Get-Item $IntuneTool
-                                if ($FileInfo.Length -gt 100000) {
+                                if ($FileInfo.Length -gt 20000) {  # At least 20KB (53.9KB is normal size)
                                     try {
                                         $testResult = & $IntuneTool /? 2>&1
                                         if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft") {
@@ -450,7 +557,7 @@ function Test-IntuneWinAppUtilGUI {
                     
                     if (Test-Path $IntuneTool) {
                         $FileInfo = Get-Item $IntuneTool
-                        if ($FileInfo.Length -gt 50000) {  # Lower threshold for alternative sources
+                        if ($FileInfo.Length -gt 20000) {  # At least 20KB (53.9KB is normal size)
                             try {
                                 $testResult = & $IntuneTool /? 2>&1
                                 if ($testResult -match "IntuneWinAppUtil|Microsoft|Content Prep|Usage") {
@@ -507,7 +614,7 @@ function Test-IntuneWinAppUtilGUI {
                         # Validate the extracted file
                         if (Test-Path $IntuneTool) {
                             $FileInfo = Get-Item $IntuneTool
-                            if ($FileInfo.Length -gt 100000) {
+                            if ($FileInfo.Length -gt 20000) {  # At least 20KB (53.9KB is normal size)
                                 try {
                                     $testResult = & $IntuneTool /? 2>&1
                                     if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft") {
@@ -540,7 +647,7 @@ function Test-IntuneWinAppUtilGUI {
         # Check download success
         if ($Downloaded -and (Test-Path $IntuneTool)) {
             $FileInfo = Get-Item $IntuneTool
-            if ($FileInfo.Length -gt 100000) { # At least 100KB
+            if ($FileInfo.Length -gt 20000) { # At least 20KB (53.9KB is normal size)
                 Write-Log "Download successful! File size: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
                 
                 # Check version if possible
@@ -577,8 +684,8 @@ function Test-IntuneWinAppUtilGUI {
         Write-Log "2. Check IT community sites (e.g., TechNet)" "Yellow"
         Write-Log "3. Contact your IT administrator" "Yellow"
         Write-Log "" 
-        Write-Log "IMPORTANT: File must be 1-3 MB in size!" "Red"
-        Write-Log "Files under 500KB are corrupted or placeholders." "Red"
+        Write-Log "IMPORTANT: File must be at least 20 KB in size!" "Red"
+        Write-Log "Normal size is about 53.9 KB for .NET tools." "Red"
         Write-Log "" 
         Write-Log "Save the file to: $ToolsPath" "Yellow"
         Write-Log "===============================" "Orange"
@@ -591,8 +698,8 @@ function Test-IntuneWinAppUtilGUI {
             "• Apps > Windows > Add > Win32 app`n" +
             "• Click 'Select app package file'`n" +
             "• Download the tool from the provided link`n`n" +
-            "IMPORTANT: File must be 1-3 MB in size!`n" +
-            "Files under 500KB are corrupted.`n`n" +
+            "IMPORTANT: File must be at least 20 KB in size!`n" +
+            "Normal size is about 53.9 KB.`n`n" +
             "Save IntuneWinAppUtil.exe to:`n$ToolsPath",
             "Download Error - MANUAL INSTALLATION REQUIRED",
             [System.Windows.Forms.MessageBoxButtons]::OK,

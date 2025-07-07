@@ -1,0 +1,26 @@
+# Ignore Microsoft tools and binaries
+tools/IntuneWinAppUtil.exe
+tools/*.exe
+
+# Ignore generated output files
+IntunewinApps/*.intunewin
+
+# Ignore temporary files
+*.tmp
+*.temp
+*~
+
+# Ignore log files
+*.log
+
+# Ignore IDE files
+.vscode/
+.vs/
+
+# Ignore Windows files
+Thumbs.db
+Desktop.ini
+
+# Ignore backup files
+*.bak
+*.backup
