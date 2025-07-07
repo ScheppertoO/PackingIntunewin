@@ -430,26 +430,6 @@ function Test-IntuneWinAppUtilGUI {
         $elements.progressBar.IsIndeterminate = $false
     }
 }
-                [System.Windows.Forms.MessageBoxIcon]::Error
-            )
-            return $false
-        }
-        
-    } catch {
-        Write-Log "Error during download: $($_.Exception.Message)" "Red"
-        [System.Windows.Forms.MessageBox]::Show(
-            "Error during download! Please manually download IntuneWinAppUtil.exe and place it in the tools folder.",
-            "Download Error",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Error
-        )
-        return $false
-    } finally {
-        # Hide progress bar
-        $elements.progressBar.Visibility = "Collapsed"
-        $elements.progressBar.IsIndeterminate = $false
-    }
-}
 
 function Get-UninstallInfoGUI {
     param(
@@ -681,7 +661,7 @@ exit /b 0
     
     # Execute tool directly with enhanced error handling
     try {
-        Write-Log "=== ENHANCED TOOL DIAGNOSTICS ===" "Blue"
+        Write-Log "=== EXTENDED TOOL DIAGNOSTICS ===" "Blue"
         
         # Compile and log tool command
         $ToolArgs = @("-c", $SourceFolder, "-s", "install.cmd", "-o", $OutputFolder)
@@ -763,7 +743,7 @@ exit /b 0
         
         # Check success based on exit code
         if ($ExitCode -ne 0) {
-            Write-Log "❌ Tool exited with error code: $ExitCode" "Red"
+            Write-Log "[ERROR] Tool exited with error code: $ExitCode" "Red"
             
             # Interpret common exit codes
             $errorMsg = switch ($ExitCode) {
@@ -779,7 +759,7 @@ exit /b 0
         }
         
     } catch {
-        Write-Log "❌ CRITICAL ERROR during tool execution: $($_.Exception.Message)" "Red"
+        Write-Log "[CRITICAL ERROR] during tool execution: $($_.Exception.Message)" "Red"
         Write-Log "Exception type: $($_.Exception.GetType().Name)" "Red"
         
         # Hide progress bar
@@ -800,11 +780,11 @@ exit /b 0
     $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" -ErrorAction SilentlyContinue | Select-Object -First 1
     
     if ($IntunewinFile) {
-        Write-Log "✅ .intunewin package successfully created!" "Green"
+        Write-Log "[SUCCESS] .intunewin package successfully created!" "Green"
         Write-Log "File: $($IntunewinFile.Name)" "Green"
         Write-Log "Size: $([math]::Round($IntunewinFile.Length / 1KB, 2)) KB" "Green"
     } else {
-        Write-Log "❌ ERROR: No .intunewin file found in output folder!" "Red"
+        Write-Log "[ERROR] No .intunewin file found in output folder!" "Red"
         
         # Enhanced diagnostics
         Write-Log "=== DETAILED FOLDER DIAGNOSTICS ===" "Orange"
@@ -815,14 +795,14 @@ exit /b 0
             if ($OutputContents) {
                 foreach ($Item in $OutputContents) {
                     $Size = if ($Item.PSIsContainer) { "[Folder]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
-                    $Type = if ($Item.PSIsContainer) { "📁" } else { "📄" }
+                    $Type = if ($Item.PSIsContainer) { "[DIR]" } else { "[FILE]" }
                     Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
                 }
             } else {
-                Write-Log "  ❌ Folder is completely empty!" "Red"
+                Write-Log "  [ERROR] Folder is completely empty!" "Red"
             }
         } catch {
-            Write-Log "  ❌ Error reading output folder: $($_.Exception.Message)" "Red"
+            Write-Log "  [ERROR] Error reading output folder: $($_.Exception.Message)" "Red"
         }
         
         Write-Log "Source folder contents ($SourceFolder):" "Orange"
@@ -830,17 +810,17 @@ exit /b 0
             $SourceContents = Get-ChildItem -Path $SourceFolder -Force -ErrorAction SilentlyContinue
             foreach ($Item in $SourceContents) {
                 $Size = if ($Item.PSIsContainer) { "[Folder]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
-                $Type = if ($Item.PSIsContainer) { "📁" } else { "📄" }
+                $Type = if ($Item.PSIsContainer) { "[DIR]" } else { "[FILE]" }
                 Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
             }
         } catch {
-            Write-Log "  ❌ Error reading source folder: $($_.Exception.Message)" "Red"
+            Write-Log "  [ERROR] Error reading source folder: $($_.Exception.Message)" "Red"
         }
         
         Write-Log "====================================" "Orange"
         
         # Comprehensive troubleshooting guide
-        Write-Log "🔧 TROUBLESHOOTING GUIDE:" "Yellow"
+        Write-Log "[TROUBLESHOOTING GUIDE]" "Yellow"
         Write-Log "1. CHECK PARAMETERS:" "Yellow"
         Write-Log "   • install.cmd exists and is valid" "Yellow"
         Write-Log "   • EXE file is present in source folder" "Yellow"
@@ -868,6 +848,7 @@ exit /b 0
         Write-Log "   • Restart computer if necessary" "Yellow"
         
         return
+    }
     
     # Write metadata
     $Meta = @{

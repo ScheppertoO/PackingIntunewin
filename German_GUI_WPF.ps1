@@ -744,7 +744,7 @@ exit /b 0
         
         # Erfolg basierend auf Exit-Code pruefen
         if ($ExitCode -ne 0) {
-            Write-Log "❌ Tool beendet mit Fehler-Code: $ExitCode" "Red"
+            Write-Log "Tool beendet mit Fehler-Code: $ExitCode" "Red"
             
             # Haeufige Exit-Codes interpretieren
             $errorMsg = switch ($ExitCode) {
@@ -760,7 +760,7 @@ exit /b 0
         }
         
     } catch {
-        Write-Log "❌ KRITISCHER FEHLER beim Tool-Aufruf: $($_.Exception.Message)" "Red"
+        Write-Log "KRITISCHER FEHLER beim Tool-Aufruf: $($_.Exception.Message)" "Red"
         Write-Log "Exception-Typ: $($_.Exception.GetType().Name)" "Red"
         
         # Progress Bar ausblenden
@@ -781,19 +781,76 @@ exit /b 0
     $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" -ErrorAction SilentlyContinue | Select-Object -First 1
     
     if ($IntunewinFile) {
-        Write-Log "✅ .intunewin Paket erfolgreich erstellt!" "Green"
+        Write-Log ".intunewin Paket erfolgreich erstellt!" "Green"
         Write-Log "Datei: $($IntunewinFile.Name)" "Green"
         Write-Log "Groesse: $([math]::Round($IntunewinFile.Length / 1KB, 2)) KB" "Green"
         Write-Log "Pfad: $($IntunewinFile.FullName)" "Green"
+    } else {
+        Write-Log "FEHLER: Keine .intunewin Datei im Ausgabe-Ordner gefunden!" "Red"
         
-        Write-Log "=== TOOL-AUSGABE-ANALYSE ===" "Blue"
-        Write-Log "Exit-Code: $ExitCode" "Blue"
+        # Erweiterte Diagnose
+        Write-Log "=== DETAILLIERTE ORDNER-DIAGNOSE ===" "Orange"
+        Write-Log "Ausgabe-Ordner Inhalt ($OutputFolder):" "Orange"
         
-        if ($OutputText) {
-            Write-Log "Standard-Ausgabe:" "Blue"
-            $OutputText -split "`n" | ForEach-Object {
-            if ($_.Trim()) { Write-Log "   $_" "Gray" }
+        try {
+            $OutputContents = Get-ChildItem -Path $OutputFolder -Force -ErrorAction SilentlyContinue
+            if ($OutputContents) {
+                foreach ($Item in $OutputContents) {
+                    $Size = if ($Item.PSIsContainer) { "[Ordner]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
+                    $Type = if ($Item.PSIsContainer) { "[Ordner]" } else { "[Datei]" }
+                    Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
+                }
+            } else {
+                Write-Log "  Ordner ist vollstaendig leer!" "Red"
+            }
+        } catch {
+            Write-Log "  Fehler beim Lesen des Ausgabe-Ordners: $($_.Exception.Message)" "Red"
         }
+        
+        Write-Log "Quell-Ordner Inhalt ($SourceFolder):" "Orange"
+        try {
+            $SourceContents = Get-ChildItem -Path $SourceFolder -Force -ErrorAction SilentlyContinue
+            foreach ($Item in $SourceContents) {
+                $Size = if ($Item.PSIsContainer) { "[Ordner]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
+                $Type = if ($Item.PSIsContainer) { "[Ordner]" } else { "[Datei]" }
+                Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
+            }
+        } catch {
+            Write-Log "  Fehler beim Lesen des Quell-Ordners: $($_.Exception.Message)" "Red"
+        }
+        
+        Write-Log "====================================" "Orange"
+        
+        # Umfassende Troubleshooting-Tipps
+        Write-Log "TROUBLESHOOTING-ANLEITUNG:" "Yellow"
+        Write-Log "1. PARAMETER PRUEFEN:" "Yellow"
+        Write-Log "   • install.cmd existiert und ist gueltig" "Yellow"
+        Write-Log "   • EXE-Datei ist im Quell-Ordner vorhanden" "Yellow"
+        Write-Log "   • Quell- und Ausgabe-Ordner sind unterschiedlich" "Yellow"
+        Write-Log "" 
+        Write-Log "2. BERECHTIGUNGEN PRUEFEN:" "Yellow"
+        Write-Log "   • Als Administrator ausfuehren" "Yellow"
+        Write-Log "   • Schreibberechtigung im Ausgabe-Ordner" "Yellow"
+        Write-Log "   • Keine Dateisperrung durch andere Programme" "Yellow"
+        Write-Log "" 
+        Write-Log "3. ANTIVIRUS / SICHERHEIT:" "Yellow"
+        Write-Log "   • Windows Defender Ausnahme hinzufuegen" "Yellow"
+        Write-Log "   • Ordner temporaer von Antivirus ausschliessen" "Yellow"
+        Write-Log "   • UAC (Benutzerkontensteuerung) pruefen" "Yellow"
+        Write-Log "" 
+        Write-Log "4. MANUELLER TEST:" "Yellow"
+        Write-Log "   Probieren Sie diesen Befehl in der Kommandozeile:" "Yellow"
+        Write-Log "   cd /d `"$ScriptPath`"" "Yellow"
+        Write-Log "   `"$IntuneTool`" -c `"$SourceFolder`" -s `"install.cmd`" -o `"$OutputFolder`"" "Yellow"
+        Write-Log "" 
+        Write-Log "5. ALTERNATIVE LOESUNGEN:" "Yellow"
+        Write-Log "   • Versuchen Sie einen anderen App-Ordner" "Yellow"
+        Write-Log "   • Verwenden Sie kuerzere Pfadnamen (keine Sonderzeichen)" "Yellow"
+        Write-Log "   • Kopieren Sie Dateien in einen lokalen Ordner (nicht Netzwerk)" "Yellow"
+        Write-Log "   • Neustart des Computers falls notwendig" "Yellow"
+        
+        return
+    }
     
     # Metadaten schreiben
     $Meta = @{
@@ -822,7 +879,7 @@ exit /b 0
     Write-Log "App-Name: $AppName"
     Write-Log "Install-Befehl: install.cmd"
     Write-Log "Uninstall-Befehl: uninstall.cmd"
-    Write-Log "Rueckgabecodes: 0 (Erfolg)" + $(if ($ExitCode -eq 3010) { ", 3010 (Neustart erforderlich)" } else { "" })
+    Write-Log "Rueckgabecodes: 0 (Erfolg)$(if ($ExitCode -eq 3010) { ', 3010 (Neustart erforderlich)' } else { '' })"
     Write-Log "====================================="
     
     # Frage, ob der Ausgabeordner geoeffnet werden soll
