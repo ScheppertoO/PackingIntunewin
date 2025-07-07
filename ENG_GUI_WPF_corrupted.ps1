@@ -1,4 +1,3 @@
-
 # IntuneWin App Packaging Tool - WPF GUI
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
@@ -7,6 +6,37 @@ Add-Type -AssemblyName System.Windows.Forms
 $ScriptPath = $PSScriptRoot
 $BaseInputPath = Join-Path $ScriptPath "apps"
 $BaseOutputPath = Join-Path $ScriptPath "IntunewinApps"
+$ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"
+$IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
+$GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
+        try {
+            $FileInfo = Get-Item $IntuneTool
+            if ($FileInfo.Length -lt 100000) {
+                Write-Log "WARNING: File too small ($([math]::Round($FileInfo.Length / 1KB, 2)) KB), possibly corrupted" "Orange"
+                Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+            } else {
+                # Perform function test
+                try {
+                    $testResult = & $IntuneTool /? 2>&1
+                    if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft") {
+                        Write-Log "Tool function test successful" "Green"
+                        return $true
+                    } else {
+                        Write-Log "WARNING: Tool function test failed, downloading new version" "Orange"
+                        Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                    }
+                } catch {
+                    Write-Log "WARNING: Tool corrupted ($($_.Exception.Message)), downloading new version" "Orange"
+                    Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+                }
+            }
+        } catch {
+            Write-Log "WARNING: Cannot read file ($($_.Exception.Message)), downloading new version" "Orange"
+            Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
+        }
+    }
+    
+    Write-Log "Downloading IntuneWinAppUtil.exe..." "Orange"ath = Join-Path $ScriptPath "IntunewinApps"
 $ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"
 $IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
 $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
@@ -110,11 +140,11 @@ $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
 </Window>
 "@
 
-# XAML laden und in WPF-Objekt umwandeln
+# Load XAML and convert to WPF object
 $reader = [System.Xml.XmlNodeReader]::new($xaml)
 $window = [System.Windows.Markup.XamlReader]::Load($reader)
 
-# Elemente der GUI abrufen
+# Get GUI elements
 $elements = @{}
 $xaml.SelectNodes("//*[@*[contains(translate(name(.),'x:',''),'Name')]]") | ForEach-Object {
     $name = $_.Name
@@ -186,7 +216,7 @@ function Initialize-GUI {
                 $elements.btnCreatePackage.IsEnabled = $false
             }
             else {
-                Write-Log "WARNING: Multiple EXE files found in $selectedApp. First will be used: $($exeFiles[0].Name)" "Orange"
+                Write-Log "WARNING: Multiple EXE files found in $selectedApp. First one will be used: $($exeFiles[0].Name)" "Orange"
             }
         }
         else {
@@ -206,7 +236,7 @@ function Refresh-AppList {
     
     # Check if base input path exists
     if (-not (Test-Path $BaseInputPath)) {
-        Write-Log "Apps folder not found. Please initialize folder structure." "Red"
+        Write-Log "Apps folder not found. Please initialize the folder structure." "Red"
         return
     }
     
@@ -242,7 +272,7 @@ function Initialize-FoldersGUI {
     Write-Log "   Output: $(Split-Path $BaseOutputPath -Leaf)"
     Write-Log "   Tools: $(Split-Path $ToolsPath -Leaf)"
     
-    # Update app list
+    # Refresh app list
     Refresh-AppList
 }
 
@@ -255,39 +285,13 @@ function Test-IntuneWinAppUtilGUI {
         New-Item -ItemType Directory -Force -Path $ToolsPath | Out-Null
     }
     
-    # Check if IntuneWinAppUtil.exe exists and works
+    # Check if IntuneWinAppUtil.exe is present
     if (Test-Path $IntuneTool) {
         Write-Log "IntuneWinAppUtil.exe found: $IntuneTool" "Green"
-        
-        # Check file integrity
-        try {
-            $FileInfo = Get-Item $IntuneTool
-            if ($FileInfo.Length -lt 100000) {
-                Write-Log "WARNING: File too small ($([math]::Round($FileInfo.Length / 1KB, 2)) KB), possibly corrupted" "Orange"
-                Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-            } else {
-                # Perform function test
-                try {
-                    $testResult = & $IntuneTool /? 2>&1
-                    if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft") {
-                        Write-Log "Tool function test successful" "Green"
-                        return $true
-                    } else {
-                        Write-Log "WARNING: Tool function test failed, downloading again" "Orange"
-                        Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-                    }
-                } catch {
-                    Write-Log "WARNING: Tool corrupted ($($_.Exception.Message)), downloading again" "Orange"
-                    Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-                }
-            }
-        } catch {
-            Write-Log "WARNING: Cannot read file ($($_.Exception.Message)), downloading again" "Orange"
-            Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-        }
+        return $true
     }
     
-    Write-Log "Downloading IntuneWinAppUtil.exe..." "Orange"
+    Write-Log "IntuneWinAppUtil.exe not found, downloading from alternative sources..." "Orange"
     
     try {
         # Show progress bar
@@ -300,13 +304,12 @@ function Test-IntuneWinAppUtilGUI {
         # Try different download methods
         $Downloaded = $false
         
-        # Method 1: Aktuelle und vertrauenswuerdige Download-Quellen
-        Write-Log "Versuche vertrauenswuerdige Download-Quellen..."
+        # Method 1: Alternative mirror sites and archive sources
+        Write-Log "Trying alternative download sources..."
         $AlternativeUrls = @(
-            "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases/download/v1.8.6/IntuneWinAppUtil.exe",
+            "https://archive.org/download/IntuneWinAppUtil/IntuneWinAppUtil.exe",
             "https://github.com/MSEndpointMgr/IntuneWin32App/raw/master/Tools/IntuneWinAppUtil.exe",
             "https://download.microsoft.com/download/8/b/e/8be61b72-ae5a-4cd9-8b01-6f6c8b8e4f8e/IntuneWinAppUtil.exe",
-            "https://archive.org/download/IntuneWinAppUtil/IntuneWinAppUtil.exe",
             "https://aka.ms/intunewinapputildownload"
         )
         
@@ -321,30 +324,12 @@ function Test-IntuneWinAppUtilGUI {
                 
                 $webClient.DownloadFile($Url, $IntuneTool)
                 
-                # Erweiterte Validierung der heruntergeladenen Datei
-                if (Test-Path $IntuneTool) {
-                    $FileInfo = Get-Item $IntuneTool
-                    if ($FileInfo.Length -gt 100000) {
-                        # Funktionstest durchfuehren
-                        try {
-                            $testResult = & $IntuneTool /? 2>&1
-                            if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep Tool") {
-                                Write-Log "Download und Funktionstest successful von: $Url" "Green"
-                                Write-Log "DateiSize: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
-                                $Downloaded = $true
-                                break
-                            } else {
-                                Write-Log "Datei heruntergeladen aber Funktionstest failed" "Orange"
-                                Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-                            }
-                        } catch {
-                            Write-Log "Datei heruntergeladen aber beschaedigt: $($_.Exception.Message)" "Orange"
-                            Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-                        }
-                    } else {
-                        Write-Log "Datei zu klein: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Orange"
-                        Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-                    }
+                if ((Test-Path $IntuneTool) -and ((Get-Item $IntuneTool).Length -gt 100000)) {
+                    Write-Log "Download successful from: $Url" "Green"
+                    $Downloaded = $true
+                    break
+                } else {
+                    if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
                 }
                 
             } catch {
@@ -353,9 +338,9 @@ function Test-IntuneWinAppUtilGUI {
             }
         }
         
-        # Method 2: Fallback to GitHub Source und local compilation (falls .NET available)
+        # Method 2: Fallback to GitHub source and local compilation (if .NET available)
         if (-not $Downloaded) {
-            Write-Log "Alle direkten Downloads failed, versuche Source code download..." "Orange"
+            Write-Log "All direct downloads failed, trying source code download..." "Orange"
             
             try {
                 $SourceUrl = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/archive/refs/tags/v1.8.6.zip"
@@ -367,16 +352,16 @@ function Test-IntuneWinAppUtilGUI {
                 $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
                 $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
                 
-                Write-Log "Lade Source-Code herunter..."
+                Write-Log "Downloading source code..."
                 $webClient.DownloadFile($SourceUrl, $TempZip)
                 
                 if ((Test-Path $TempZip) -and ((Get-Item $TempZip).Length -gt 10000)) {
-                    Write-Log "Source-Code successful heruntergeladen" "Green"
+                    Write-Log "Source code downloaded successfully" "Green"
                     
-                    # Extract and search for precompiled binaries
+                    # Extract and look for precompiled binaries
                     Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
                     
-                    # Suche nach bereits kompilierten EXE-Dateien im Source
+                    # Search for already compiled EXE files in source
                     $ExeFiles = Get-ChildItem -Path $TempExtract -Filter "IntuneWinAppUtil.exe" -Recurse
                     if ($ExeFiles.Count -gt 0) {
                         Copy-Item $ExeFiles[0].FullName $IntuneTool -Force
@@ -396,20 +381,20 @@ function Test-IntuneWinAppUtilGUI {
             }
         }
         
-        # Erfolg pruefen
+        # Check success
         if ($Downloaded -and (Test-Path $IntuneTool)) {
             $FileInfo = Get-Item $IntuneTool
-            if ($FileInfo.Length -gt 100000) { # Mindestens 100KB
+            if ($FileInfo.Length -gt 100000) { # At least 100KB
                 Write-Log "Download successful! File size: $([math]::Round($FileInfo.Length / 1MB, 2)) MB" "Green"
                 
-                # Version pruefen falls moeglich
+                # Check version if possible
                 try {
                     $VersionInfo = & $IntuneTool -v 2>&1
                     if ($VersionInfo -match "(\d+\.\d+\.\d+)") {
                         Write-Log "Tool version: $($Matches[1])" "Green"
                     }
                 } catch {
-                    # Version-Check failed, aber das ist ok
+                    # Version check failed, but that's ok
                 }
                 
                 return $true
@@ -419,7 +404,7 @@ function Test-IntuneWinAppUtilGUI {
             }
         }
         
-        # Fallback: Detaillierte manuelle Anleitung
+        # Fallback: Detailed manual instructions
         Write-Log "All automatic download methods failed!" "Red"
         Write-Log "" 
         Write-Log "=== MANUAL INSTALLATION ===" "Orange"
@@ -429,12 +414,12 @@ function Test-IntuneWinAppUtilGUI {
         Write-Log "1. Visit: https://aka.ms/win32contentpreptool" "Yellow"
         Write-Log "2. Or search for 'Microsoft Win32 Content Prep Tool'" "Yellow"
         Write-Log "" 
-        Write-Log "OPTION 2 - Alternative Sources:" "Yellow"
+        Write-Log "OPTION 2 - Alternative sources:" "Yellow"
         Write-Log "1. Search the internet for 'IntuneWinAppUtil.exe download'" "Yellow"
         Write-Log "2. Check PowerShell Gallery or Chocolatey" "Yellow"
         Write-Log "" 
         Write-Log "OPTION 3 - From existing Intune Admin Center:" "Yellow"
-        Write-Log "1. Log in to https://endpoint.microsoft.com ein" "Yellow"
+        Write-Log "1. Log in to https://endpoint.microsoft.com" "Yellow"
         Write-Log "2. Go to Apps > Windows > Add > Win32 app" "Yellow"
         Write-Log "3. Download the tool from there" "Yellow"
         Write-Log "" 
@@ -448,11 +433,11 @@ function Test-IntuneWinAppUtilGUI {
             "• Visit: https://aka.ms/win32contentpreptool`n" +
             "• Or search for 'Microsoft Win32 Content Prep Tool'`n`n" +
             "OPTION 2 - Intune Admin Center:`n" +
-            "• Gehen Sie zu https://endpoint.microsoft.com`n" +
+            "• Go to https://endpoint.microsoft.com`n" +
             "• Apps > Windows > Add > Win32 app`n" +
             "• Download the tool from there`n`n" +
             "Save IntuneWinAppUtil.exe to:`n$ToolsPath",
-            "Download Error - MANUAL INSTALLATION REQUIRED",
+            "Download Error - Manual Installation Required",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Warning
         )
@@ -461,11 +446,11 @@ function Test-IntuneWinAppUtilGUI {
     } catch {
         Write-Log "Critical error during download: $($_.Exception.Message)" "Red"
         [System.Windows.Forms.MessageBox]::Show(
-            "Kritischer Fehler beim Download!`n`nERROR: $($_.Exception.Message)`n`n" +
-            "Please download IntuneWinAppUtil.exe manually von:`n" +
+            "Critical error during download!`n`nError: $($_.Exception.Message)`n`n" +
+            "Please download IntuneWinAppUtil.exe manually from:`n" +
             "https://aka.ms/win32contentpreptool`n`n" +
             "And save it to: $ToolsPath",
-            "Kritischer Download Error",
+            "Critical Download Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
         )
@@ -483,9 +468,9 @@ function Get-UninstallInfoGUI {
         [string]$ExePath
     )
     
-    Write-Log "Searching for uninstall information fuer '$AppName'..." "Blue"
+    Write-Log "Searching for uninstall information for '$AppName'..." "Blue"
     
-    # Registry-Pfade fuer installierte Programme
+    # Registry paths for installed programs
     $RegistryPaths = @(
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
         "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
@@ -512,25 +497,25 @@ function Get-UninstallInfoGUI {
             }
         }
         catch {
-            # Ignoriere Registry-Fehler
+            # Ignore registry errors
         }
     }
     
     return @{ Found = $false }
 }
 
-function Test-ExeUninstallparameterssGUI {
+function Test-ExeUninstallParametersGUI {
     param([string]$ExePath)
     
-    Write-Log "Analyzing EXE fuer Deinstallationsparameters..." "Blue"
+    Write-Log "Analyzing EXE for uninstall parameters..." "Blue"
     
-    # Dateiname-basierte Heuristik
-    Write-Log "Analyzing Dateiname..."
+    # Filename-based heuristics
+    Write-Log "Analyzing filename..."
     $FileName = [System.IO.Path]::GetFileNameWithoutExtension($ExePath).ToLower()
     
-    # Installer-Typ aus Dateiname ableiten
+    # Derive installer type from filename
     if ($FileName -like "*setup*" -or $FileName -like "*install*") {
-        Write-Log "Setup/Installer detected aus Dateiname" "Green"
+        Write-Log "Setup/Installer detected from filename" "Green"
         
         if ($FileName -like "*nsis*") {
             return "/S"
@@ -540,14 +525,14 @@ function Test-ExeUninstallparameterssGUI {
             return "/uninstall /silent"
         }
     } elseif ($FileName -like "*msi*") {
-        Write-Log "MSI-bezogen detected aus Dateiname" "Green"
+        Write-Log "MSI-related detected from filename" "Green"
         return "/x /quiet"
     }
     
-    # Sichere Fallback-Heuristik
-    Write-Log "Keine spezifischen parameters detected, verwende Standard-Heuristik" "Orange"
+    # Safe fallback heuristics
+    Write-Log "No specific parameters detected, using standard heuristics" "Orange"
     
-    # Waehle haeufigsten Standard basierend auf Dateiname
+    # Choose most common standard based on filename
     if ($FileName -like "*setup*") {
         $SelectedParams = "/uninstall /silent"
     }
@@ -555,7 +540,7 @@ function Test-ExeUninstallparameterssGUI {
         $SelectedParams = "/remove /quiet"
     }
     else {
-        $SelectedParams = "/uninstall /silent"  # Haeufigster Standard
+        $SelectedParams = "/uninstall /silent"  # Most common standard
     }
     
     Write-Log "Recommended parameters: $SelectedParams" "Orange"
@@ -563,7 +548,7 @@ function Test-ExeUninstallparameterssGUI {
 }
 
 function Create-IntuneWinAppPackage {
-    # Ausgewaehlte App holen
+    # Get selected app
     $InputFolder = $elements.cboAppFolder.SelectedItem
     
     if (-not $InputFolder) {
@@ -571,17 +556,17 @@ function Create-IntuneWinAppPackage {
         return
     }
     
-    # Pfade definieren
+    # Define paths
     $SourceFolder = Join-Path $BaseInputPath $InputFolder
     $OutputFolder = Join-Path $BaseOutputPath $InputFolder
     
-    # Pruefen, ob der Ordner existiert
+    # Check if folder exists
     if (-not (Test-Path $SourceFolder)) {
-        Write-Log "App-Ordner '$InputFolder' not found!" "Red"
+        Write-Log "App folder '$InputFolder' not found!" "Red"
         return
     }
     
-    # Pruefe Tool-availablekeit
+    # Check tool availability
     if (-not (Test-Path $IntuneTool)) {
         $toolResult = Test-IntuneWinAppUtilGUI
         if (-not $toolResult) {
@@ -590,10 +575,10 @@ function Create-IntuneWinAppPackage {
         }
     }
     
-    # Pruefen, ob eine .exe vorhanden ist
+    # Check if an .exe is present
     $ExeFiles = Get-ChildItem -Path $SourceFolder -Filter *.exe
     if ($ExeFiles.Count -eq 0) {
-        Write-Log "Keine .exe in directory '$SourceFolder' gefunden!" "Red"
+        Write-Log "No .exe found in directory '$SourceFolder'!" "Red"
         return
     }
     
@@ -603,28 +588,28 @@ function Create-IntuneWinAppPackage {
     
     Write-Log "Starting packaging for $AppName..." "Blue"
     
-    # Reboot-Einstellung pruefen
+    # Check reboot setting
     $RebootRequired = $elements.chkRebootRequired.IsChecked
     if ($RebootRequired) {
         $ExitCode = 3010  # Soft reboot required
-        Write-Log "Reboot after installation will be required (Exit Code: 3010)" "Orange"
+        Write-Log "Reboot will be required after installation (Exit Code: 3010)" "Orange"
     } else {
-        $ExitCode = 0     # Normaler Erfolg
+        $ExitCode = 0     # Normal success
         Write-Log "No reboot required (Exit Code: 0)" "Green"
     }
     
-    # Deinstallationsinformationen ermitteln
+    # Determine uninstall information
     $UninstallInfo = Get-UninstallInfoGUI -AppName $AppName -ExePath $ExePath
     
     $UninstallCommand = ""
     if ($UninstallInfo.Found) {
-        Write-Log "Registry-Eintrag gefunden!" "Green"
+        Write-Log "Registry entry found!" "Green"
         
         if ($UninstallInfo.QuietUninstallString) {
             $UninstallCommand = $UninstallInfo.QuietUninstallString
-            Write-Log "Verwende QuietUninstallString: $UninstallCommand" "Green"
+            Write-Log "Using QuietUninstallString: $UninstallCommand" "Green"
         } else {
-            # Versuche, /quiet oder /silent zur UninstallString hinzuzufuegen
+            # Try to add /quiet or /silent to UninstallString
             $UninstallString = $UninstallInfo.UninstallString
             if ($UninstallString -notmatch "/quiet|/silent|-quiet|-silent") {
                 if ($UninstallString -like "*msiexec*") {
@@ -635,19 +620,19 @@ function Create-IntuneWinAppPackage {
             } else {
                 $UninstallCommand = $UninstallString
             }
-            Write-Log "Verwende modifizierte UninstallString: $UninstallCommand" "Orange"
+            Write-Log "Using modified UninstallString: $UninstallCommand" "Orange"
         }
     } else {
-        Write-Log "Kein Registry-Eintrag gefunden, teste EXE-parameters..." "Orange"
-        $UninstallParams = Test-ExeUninstallparameterssGUI -ExePath $ExePath
+        Write-Log "No registry entry found, testing EXE parameters..." "Orange"
+        $UninstallParams = Test-ExeUninstallParametersGUI -ExePath $ExePath
         $UninstallCommand = "$ExeName $UninstallParams"
-        Write-Log "Verwende EXE mit parametersn: $UninstallCommand" "Orange"
+        Write-Log "Using EXE with parameters: $UninstallCommand" "Orange"
     }
     
-    # Ausgabeordner vorbereiten
+    # Prepare output folder
     New-Item -ItemType Directory -Force -Path $OutputFolder | Out-Null
     
-    # install.cmd dynamisch erstellen
+    # Create install.cmd dynamically
     $InstallCmd = @"
 @echo off
 echo Installing $AppName...
@@ -662,7 +647,7 @@ exit /b $ExitCode
     Set-Content -Path "$SourceFolder\install.cmd" -Value $InstallCmd -Encoding ASCII
     Write-Log "install.cmd created" "Green"
     
-    # uninstall.cmd dynamisch erstellen
+    # Create uninstall.cmd dynamically
     $UninstallCmd = @"
 @echo off
 echo Uninstalling $AppName...
@@ -681,39 +666,39 @@ exit /b 0
     $elements.progressBar.Visibility = "Visible"
     $elements.progressBar.IsIndeterminate = $true
     
-    # .intunewin erstellen (im Hintergrund)
+    # Create .intunewin (in background)
     Write-Log "Creating .intunewin package (this may take a moment)..." "Blue"
     Write-Log "Tool command: $IntuneTool -c `"$SourceFolder`" -s `"install.cmd`" -o `"$OutputFolder`"" "Gray"
     
-    # Detaillierte parameters-Validierung
-    Write-Log "Validating parameterss..." "Blue"
+    # Detailed parameter validation
+    Write-Log "Validating parameters..." "Blue"
     Write-Log "   Source folder: $SourceFolder (Exists: $(Test-Path $SourceFolder))" "Gray"
     Write-Log "   Setup file: install.cmd (Exists: $(Test-Path "$SourceFolder\install.cmd"))" "Gray"
     Write-Log "   Output folder: $OutputFolder (Exists: $(Test-Path $OutputFolder))" "Gray"
     Write-Log "   IntuneWinAppUtil: $IntuneTool (Exists: $(Test-Path $IntuneTool))" "Gray"
     
-    # Teste Tool-Funktionalitaet
+    # Test tool functionality
     try {
         Write-Log "Testing tool version..." "Blue"
         $versionResult = & $IntuneTool -h 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Tool is functional" "Green"
         } else {
-            Write-Log "WARNING: Tool gibt Exit-Code $LASTEXITCODE zurueck" "Orange"
+            Write-Log "WARNING: Tool returns exit code $LASTEXITCODE" "Orange"
         }
     } catch {
         Write-Log "WARNING: Tool test failed: $($_.Exception.Message)" "Orange"
     }
     
-    # Tool direkt mit erweiterter Fehlerbehandlung ausfuehren
+    # Execute tool directly with enhanced error handling
     try {
         Write-Log "=== EXTENDED TOOL DIAGNOSTICS ===" "Blue"
         
-        # Tool-Befehl zusammenstellen und protokollieren
+        # Compile and log tool command
         $ToolArgs = @("-c", $SourceFolder, "-s", "install.cmd", "-o", $OutputFolder)
         Write-Log "Executing: $IntuneTool $($ToolArgs -join ' ')" "Blue"
         
-        # Process-Objekt fuer bessere Kontrolle erstellen
+        # Create process object for better control
         $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
         $ProcessInfo.FileName = $IntuneTool
         $ProcessInfo.Arguments = $ToolArgs -join ' '
@@ -726,7 +711,7 @@ exit /b 0
         $Process = New-Object System.Diagnostics.Process
         $Process.StartInfo = $ProcessInfo
         
-        # Ausgabe-Handler
+        # Output handlers
         $StdOut = New-Object System.Text.StringBuilder
         $StdErr = New-Object System.Text.StringBuilder
         
@@ -742,25 +727,25 @@ exit /b 0
             }
         })
         
-        # Prozess starten
+        # Start process
         Write-Log "Starting IntuneWinAppUtil.exe..." "Blue"
         $Process.Start()
         $Process.BeginOutputReadLine()
         $Process.BeginErrorReadLine()
         
-        # Timeout von 3 Minuten fuer groessere Apps
+        # 3 minute timeout for larger apps
         $TimeoutMs = 180000
         if (-not $Process.WaitForExit($TimeoutMs)) {
-            Write-Log "TIMEOUT: Tool reagiert nach 3 Minuten nicht - beende Prozess" "Red"
+            Write-Log "TIMEOUT: Tool not responding after 3 minutes - terminating process" "Red"
             $Process.Kill()
             $Process.WaitForExit()
-            throw "Tool-Timeout nach 3 Minuten"
+            throw "Tool timeout after 3 minutes"
         }
         
         $ExitCode = $Process.ExitCode
         $Process.Close()
         
-        # Ausgabe protokollieren
+        # Log output
         $OutputText = $StdOut.ToString().Trim()
         $ErrorText = $StdErr.ToString().Trim()
         
@@ -787,25 +772,25 @@ exit /b 0
         
         Write-Log "=========================" "Blue"
         
-        # Erfolg basierend auf Exit-Code pruefen
+        # Check success based on exit code
         if ($ExitCode -ne 0) {
-            Write-Log "Tool exited with error code: $ExitCode" "Red"
+            Write-Log "[ERROR] Tool exited with error code: $ExitCode" "Red"
             
-            # Haeufige Exit-Codes interpretieren
+            # Interpret common exit codes
             $errorMsg = switch ($ExitCode) {
-                1 { "Allgemeiner Anwendungsfehler - pruefen Sie Berechtigungen und parameters" }
-                2 { "Ungueltige parameters oder Dateien not found" }
-                3 { "Zugriffsberechtigung verweigert - fuehren Sie als Administrator aus" }
-                5 { "Ausgabeordner nicht beschreibbar" }
-                87 { "Ungueltige parameters-Syntax" }
-                -1 { "Schwerwiegender interner Fehler" }
-                default { "Unbekannter Exit Code: $ExitCode" }
+                1 { "General application error - check permissions and parameters" }
+                2 { "Invalid parameters or files not found" }
+                3 { "Access denied - run as administrator" }
+                5 { "Output folder not writable" }
+                87 { "Invalid parameter syntax" }
+                -1 { "Severe internal error" }
+                default { "Unknown exit code: $ExitCode" }
             }
             Write-Log "Error details: $errorMsg" "Red"
         }
         
     } catch {
-        Write-Log "CRITICAL ERROR during tool execution: $($_.Exception.Message)" "Red"
+        Write-Log "[CRITICAL ERROR] during tool execution: $($_.Exception.Message)" "Red"
         Write-Log "Exception type: $($_.Exception.GetType().Name)" "Red"
         
         # Hide progress bar
@@ -818,22 +803,21 @@ exit /b 0
     $elements.progressBar.Visibility = "Collapsed"
     $elements.progressBar.IsIndeterminate = $false
     
-    # Pruefen ob .intunewin successful created wurde
+    # Check if .intunewin was successfully created
     Write-Log "=== SUCCESS VERIFICATION ===" "Blue"
     Write-Log "Checking output folder: $OutputFolder" "Blue"
-    Start-Sleep -Seconds 2  # Warten fuer Dateisystem-Sync
+    Start-Sleep -Seconds 2  # Wait for filesystem sync
     
     $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" -ErrorAction SilentlyContinue | Select-Object -First 1
     
     if ($IntunewinFile) {
-        Write-Log ".intunewin Paket successful created!" "Green"
+        Write-Log "[SUCCESS] .intunewin package successfully created!" "Green"
         Write-Log "File: $($IntunewinFile.Name)" "Green"
         Write-Log "Size: $([math]::Round($IntunewinFile.Length / 1KB, 2)) KB" "Green"
-        Write-Log "Path: $($IntunewinFile.FullName)" "Green"
     } else {
-        Write-Log "ERROR: No .intunewin file found in output folder!" "Red"
+        Write-Log "[ERROR] No .intunewin file found in output folder!" "Red"
         
-        # Erweiterte Diagnose
+        # Enhanced diagnostics
         Write-Log "=== DETAILED FOLDER DIAGNOSTICS ===" "Orange"
         Write-Log "Output folder contents ($OutputFolder):" "Orange"
         
@@ -841,73 +825,73 @@ exit /b 0
             $OutputContents = Get-ChildItem -Path $OutputFolder -Force -ErrorAction SilentlyContinue
             if ($OutputContents) {
                 foreach ($Item in $OutputContents) {
-                    $Size = if ($Item.PSIsContainer) { "[Ordner]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
-                    $Type = if ($Item.PSIsContainer) { "[Ordner]" } else { "[Datei]" }
+                    $Size = if ($Item.PSIsContainer) { "[Folder]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
+                    $Type = if ($Item.PSIsContainer) { "[DIR]" } else { "[FILE]" }
                     Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
                 }
             } else {
-                Write-Log "  Folder is completely empty!" "Red"
+                Write-Log "  [ERROR] Folder is completely empty!" "Red"
             }
         } catch {
-            Write-Log "  Fehler reading the Ausgabe-folder: $($_.Exception.Message)" "Red"
+            Write-Log "  [ERROR] Error reading output folder: $($_.Exception.Message)" "Red"
         }
         
         Write-Log "Source folder contents ($SourceFolder):" "Orange"
         try {
             $SourceContents = Get-ChildItem -Path $SourceFolder -Force -ErrorAction SilentlyContinue
             foreach ($Item in $SourceContents) {
-                $Size = if ($Item.PSIsContainer) { "[Ordner]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
-                $Type = if ($Item.PSIsContainer) { "[Ordner]" } else { "[Datei]" }
+                $Size = if ($Item.PSIsContainer) { "[Folder]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
+                $Type = if ($Item.PSIsContainer) { "[DIR]" } else { "[FILE]" }
                 Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
             }
         } catch {
-            Write-Log "  Fehler reading the Quell-folder: $($_.Exception.Message)" "Red"
+            Write-Log "  [ERROR] Error reading source folder: $($_.Exception.Message)" "Red"
         }
         
         Write-Log "====================================" "Orange"
         
-        # Umfassende Troubleshooting-Tipps
-        Write-Log "TROUBLESHOOTING-ANLEITUNG:" "Yellow"
-        Write-Log "1. parameters PRUEFEN:" "Yellow"
-        Write-Log "   • install.cmd existiert und ist gueltig" "Yellow"
-        Write-Log "   • EXE-Datei ist im Quell-Ordner vorhanden" "Yellow"
-        Write-Log "   • Quell- und Ausgabe-Ordner sind unterschiedlich" "Yellow"
+        # Comprehensive troubleshooting guide
+        Write-Log "[TROUBLESHOOTING GUIDE]" "Yellow"
+        Write-Log "1. CHECK PARAMETERS:" "Yellow"
+        Write-Log "   • install.cmd exists and is valid" "Yellow"
+        Write-Log "   • EXE file is present in source folder" "Yellow"
+        Write-Log "   • Source and output folders are different" "Yellow"
         Write-Log "" 
-        Write-Log "2. BERECHTIGUNGEN PRUEFEN:" "Yellow"
-        Write-Log "   • Als Administrator ausfuehren" "Yellow"
-        Write-Log "   • Schreibberechtigung im Ausgabe-Ordner" "Yellow"
-        Write-Log "   • Keine Dateisperrung durch andere Programme" "Yellow"
+        Write-Log "2. CHECK PERMISSIONS:" "Yellow"
+        Write-Log "   • Run as administrator" "Yellow"
+        Write-Log "   • Write permission in output folder" "Yellow"
+        Write-Log "   • No file locking by other programs" "Yellow"
         Write-Log "" 
-        Write-Log "3. ANTIVIRUS / SICHERHEIT:" "Yellow"
-        Write-Log "   • Windows Defender Ausnahme hinzufuegen" "Yellow"
-        Write-Log "   • Ordner temporaer von Antivirus ausschliessen" "Yellow"
-        Write-Log "   • UAC (Benutzerkontensteuerung) pruefen" "Yellow"
+        Write-Log "3. ANTIVIRUS / SECURITY:" "Yellow"
+        Write-Log "   • Add Windows Defender exclusion" "Yellow"
+        Write-Log "   • Temporarily exclude folders from antivirus" "Yellow"
+        Write-Log "   • Check UAC (User Account Control)" "Yellow"
         Write-Log "" 
-        Write-Log "4. MANUELLER TEST:" "Yellow"
-        Write-Log "   Probieren Sie diesen Befehl in der Kommandozeile:" "Yellow"
+        Write-Log "4. MANUAL TEST:" "Yellow"
+        Write-Log "   Try this command in command prompt:" "Yellow"
         Write-Log "   cd /d `"$ScriptPath`"" "Yellow"
         Write-Log "   `"$IntuneTool`" -c `"$SourceFolder`" -s `"install.cmd`" -o `"$OutputFolder`"" "Yellow"
         Write-Log "" 
-        Write-Log "5. ALTERNATIVE LOESUNGEN:" "Yellow"
-        Write-Log "   • Versuchen Sie einen anderen App-Ordner" "Yellow"
-        Write-Log "   • Verwenden Sie kuerzere Pfadnamen (keine Sonderzeichen)" "Yellow"
-        Write-Log "   • Kopieren Sie Dateien in einen lokalen Ordner (nicht Netzwerk)" "Yellow"
-        Write-Log "   • Neustart des Computers falls notwendig" "Yellow"
+        Write-Log "5. ALTERNATIVE SOLUTIONS:" "Yellow"
+        Write-Log "   • Try a different app folder" "Yellow"
+        Write-Log "   • Use shorter path names (no special characters)" "Yellow"
+        Write-Log "   • Copy files to local folder (not network)" "Yellow"
+        Write-Log "   • Restart computer if necessary" "Yellow"
         
         return
     }
     
-    # Metadaten schreiben
+    # Write metadata
     $Meta = @{
         AppName = $AppName
         Installer = $ExeName
         InstallCommand = "install.cmd"
         UninstallCommand = "uninstall.cmd"
-        UninstallMethod = if ($UninstallInfo.Found) { "Registry" } else { "EXE parameterss" }
+        UninstallMethod = if ($UninstallInfo.Found) { "Registry" } else { "EXE Parameters" }
         UninstallString = $UninstallCommand
         ExitCode = $ExitCode
         RebootRequired = ($ExitCode -eq 3010)
-        DetectionType = "Registry (manuell konfigurieren)"
+        DetectionType = "Registry (configure manually)"
         CreatedOn = (Get-Date).ToString("yyyy-MM-dd HH:mm")
         CreatedBy = $env:USERNAME
         ScriptVersion = "2.0 GUI"
@@ -915,22 +899,22 @@ exit /b 0
     }
     $Meta | ConvertTo-Json -Depth 3 | Set-Content -Path "$OutputFolder\metadata.json"
     
-    Write-Log "Metadaten gespeichert in: metadata.json" "Green"
-    Write-Log "Verpackung abgeschlossen!" "Green"
+    Write-Log "Metadata saved in: metadata.json" "Green"
+    Write-Log "Packaging completed!" "Green"
     
-    # Zusammenfassung
-    Write-Log "`nZusammenfassung fuer Intune:" "Blue"
+    # Summary
+    Write-Log "`nSummary for Intune:" "Blue"
     Write-Log "====================================="
-    Write-Log "App-Name: $AppName"
-    Write-Log "Install-Befehl: install.cmd"
-    Write-Log "Uninstall-Befehl: uninstall.cmd"
-    Write-Log "Rueckgabecodes: 0 (Erfolg)$(if ($ExitCode -eq 3010) { ', 3010 (Neustart erforderlich)' } else { '' })"
+    Write-Log "App Name: $AppName"
+    Write-Log "Install Command: install.cmd"
+    Write-Log "Uninstall Command: uninstall.cmd"
+    Write-Log "Return Codes: 0 (Success)" + $(if ($ExitCode -eq 3010) { ", 3010 (Reboot required)" } else { "" })
     Write-Log "====================================="
     
-    # Frage, ob der Ausgabeordner geoeffnet werden soll
+    # Ask if output folder should be opened
     $result = [System.Windows.Forms.MessageBox]::Show(
-        "Paket successful created. Moechten Sie den Ausgabeordner oeffnen?",
-        "Paket created",
+        "Package successfully created. Would you like to open the output folder?",
+        "Package Created",
         [System.Windows.Forms.MessageBoxButtons]::YesNo,
         [System.Windows.Forms.MessageBoxIcon]::Information
     )
@@ -940,10 +924,6 @@ exit /b 0
     }
 }
 
-# GUI initialisieren und anzeigen
+# Initialize and show GUI
 Initialize-GUI
 $window.ShowDialog() | Out-Null
-
-
-
-
