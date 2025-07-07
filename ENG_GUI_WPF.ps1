@@ -657,34 +657,217 @@ exit /b 0
     
     # Create .intunewin (in background)
     Write-Log "Creating .intunewin package (this may take a moment)..." "Blue"
+    Write-Log "Tool command: $IntuneTool -c `"$SourceFolder`" -s `"install.cmd`" -o `"$OutputFolder`"" "Gray"
     
-    $job = Start-Job -ScriptBlock {
-        param ($IntuneTool, $SourceFolder, $OutputFolder)
-        & $IntuneTool -c $SourceFolder -s "install.cmd" -o $OutputFolder
-    } -ArgumentList $IntuneTool, $SourceFolder, $OutputFolder
+    # Detailed parameter validation
+    Write-Log "Validating parameters..." "Blue"
+    Write-Log "   Source folder: $SourceFolder (Exists: $(Test-Path $SourceFolder))" "Gray"
+    Write-Log "   Setup file: install.cmd (Exists: $(Test-Path "$SourceFolder\install.cmd"))" "Gray"
+    Write-Log "   Output folder: $OutputFolder (Exists: $(Test-Path $OutputFolder))" "Gray"
+    Write-Log "   IntuneWinAppUtil: $IntuneTool (Exists: $(Test-Path $IntuneTool))" "Gray"
     
-    # Wait until job finishes
-    while ($job.State -eq "Running") {
-        Start-Sleep -Milliseconds 500
+    # Test tool functionality
+    try {
+        Write-Log "Testing tool version..." "Blue"
+        $versionResult = & $IntuneTool -h 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "Tool is functional" "Green"
+        } else {
+            Write-Log "WARNING: Tool returns exit code $LASTEXITCODE" "Orange"
+        }
+    } catch {
+        Write-Log "WARNING: Tool test failed: $($_.Exception.Message)" "Orange"
     }
     
-    # Check job result
-    $jobOutput = Receive-Job -Job $job
-    Remove-Job -Job $job
+    # Execute tool directly with enhanced error handling
+    try {
+        Write-Log "=== ENHANCED TOOL DIAGNOSTICS ===" "Blue"
+        
+        # Compile and log tool command
+        $ToolArgs = @("-c", $SourceFolder, "-s", "install.cmd", "-o", $OutputFolder)
+        Write-Log "Executing: $IntuneTool $($ToolArgs -join ' ')" "Blue"
+        
+        # Create process object for better control
+        $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $ProcessInfo.FileName = $IntuneTool
+        $ProcessInfo.Arguments = $ToolArgs -join ' '
+        $ProcessInfo.RedirectStandardOutput = $true
+        $ProcessInfo.RedirectStandardError = $true
+        $ProcessInfo.UseShellExecute = $false
+        $ProcessInfo.CreateNoWindow = $true
+        $ProcessInfo.WorkingDirectory = $ScriptPath
+        
+        $Process = New-Object System.Diagnostics.Process
+        $Process.StartInfo = $ProcessInfo
+        
+        # Output handlers
+        $StdOut = New-Object System.Text.StringBuilder
+        $StdErr = New-Object System.Text.StringBuilder
+        
+        $Process.add_OutputDataReceived({
+            if ($_.Data) {
+                [void]$StdOut.AppendLine($_.Data)
+            }
+        })
+        
+        $Process.add_ErrorDataReceived({
+            if ($_.Data) {
+                [void]$StdErr.AppendLine($_.Data)
+            }
+        })
+        
+        # Start process
+        Write-Log "Starting IntuneWinAppUtil.exe..." "Blue"
+        $Process.Start()
+        $Process.BeginOutputReadLine()
+        $Process.BeginErrorReadLine()
+        
+        # 3 minute timeout for larger apps
+        $TimeoutMs = 180000
+        if (-not $Process.WaitForExit($TimeoutMs)) {
+            Write-Log "TIMEOUT: Tool not responding after 3 minutes - terminating process" "Red"
+            $Process.Kill()
+            $Process.WaitForExit()
+            throw "Tool timeout after 3 minutes"
+        }
+        
+        $ExitCode = $Process.ExitCode
+        $Process.Close()
+        
+        # Log output
+        $OutputText = $StdOut.ToString().Trim()
+        $ErrorText = $StdErr.ToString().Trim()
+        
+        Write-Log "=== TOOL OUTPUT ANALYSIS ===" "Blue"
+        Write-Log "Exit Code: $ExitCode" "Blue"
+        
+        if ($OutputText) {
+            Write-Log "Standard Output:" "Blue"
+            $OutputText -split "`n" | ForEach-Object {
+                if ($_.Trim()) { Write-Log "  $($_.Trim())" "Gray" }
+            }
+        } else {
+            Write-Log "No standard output received" "Orange"
+        }
+        
+        if ($ErrorText) {
+            Write-Log "Error Output:" "Red"
+            $ErrorText -split "`n" | ForEach-Object {
+                if ($_.Trim()) { Write-Log "  $($_.Trim())" "Red" }
+            }
+        } else {
+            Write-Log "No error output received" "Green"
+        }
+        
+        Write-Log "=========================" "Blue"
+        
+        # Check success based on exit code
+        if ($ExitCode -ne 0) {
+            Write-Log "❌ Tool exited with error code: $ExitCode" "Red"
+            
+            # Interpret common exit codes
+            $errorMsg = switch ($ExitCode) {
+                1 { "General application error - check permissions and parameters" }
+                2 { "Invalid parameters or files not found" }
+                3 { "Access denied - run as administrator" }
+                5 { "Output folder not writable" }
+                87 { "Invalid parameter syntax" }
+                -1 { "Severe internal error" }
+                default { "Unknown exit code: $ExitCode" }
+            }
+            Write-Log "Error details: $errorMsg" "Red"
+        }
+        
+    } catch {
+        Write-Log "❌ CRITICAL ERROR during tool execution: $($_.Exception.Message)" "Red"
+        Write-Log "Exception type: $($_.Exception.GetType().Name)" "Red"
+        
+        # Hide progress bar
+        $elements.progressBar.Visibility = "Collapsed"
+        $elements.progressBar.IsIndeterminate = $false
+        return
+    }
     
     # Hide progress bar
     $elements.progressBar.Visibility = "Collapsed"
     $elements.progressBar.IsIndeterminate = $false
     
     # Check if .intunewin was successfully created
-    $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" | Select-Object -First 1
+    Write-Log "=== SUCCESS VERIFICATION ===" "Blue"
+    Write-Log "Checking output folder: $OutputFolder" "Blue"
+    Start-Sleep -Seconds 2  # Wait for filesystem sync
+    
+    $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" -ErrorAction SilentlyContinue | Select-Object -First 1
+    
     if ($IntunewinFile) {
-        Write-Log ".intunewin package successfully created: $($IntunewinFile.Name)" "Green"
+        Write-Log "✅ .intunewin package successfully created!" "Green"
+        Write-Log "File: $($IntunewinFile.Name)" "Green"
+        Write-Log "Size: $([math]::Round($IntunewinFile.Length / 1KB, 2)) KB" "Green"
     } else {
-        Write-Log "Error creating .intunewin package!" "Red"
-        Write-Log "Tool output: $jobOutput" "Red"
+        Write-Log "❌ ERROR: No .intunewin file found in output folder!" "Red"
+        
+        # Enhanced diagnostics
+        Write-Log "=== DETAILED FOLDER DIAGNOSTICS ===" "Orange"
+        Write-Log "Output folder contents ($OutputFolder):" "Orange"
+        
+        try {
+            $OutputContents = Get-ChildItem -Path $OutputFolder -Force -ErrorAction SilentlyContinue
+            if ($OutputContents) {
+                foreach ($Item in $OutputContents) {
+                    $Size = if ($Item.PSIsContainer) { "[Folder]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
+                    $Type = if ($Item.PSIsContainer) { "📁" } else { "📄" }
+                    Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
+                }
+            } else {
+                Write-Log "  ❌ Folder is completely empty!" "Red"
+            }
+        } catch {
+            Write-Log "  ❌ Error reading output folder: $($_.Exception.Message)" "Red"
+        }
+        
+        Write-Log "Source folder contents ($SourceFolder):" "Orange"
+        try {
+            $SourceContents = Get-ChildItem -Path $SourceFolder -Force -ErrorAction SilentlyContinue
+            foreach ($Item in $SourceContents) {
+                $Size = if ($Item.PSIsContainer) { "[Folder]" } else { "$([math]::Round($Item.Length / 1KB, 2)) KB" }
+                $Type = if ($Item.PSIsContainer) { "📁" } else { "📄" }
+                Write-Log "  $Type $($Item.Name) ($Size)" "Orange"
+            }
+        } catch {
+            Write-Log "  ❌ Error reading source folder: $($_.Exception.Message)" "Red"
+        }
+        
+        Write-Log "====================================" "Orange"
+        
+        # Comprehensive troubleshooting guide
+        Write-Log "🔧 TROUBLESHOOTING GUIDE:" "Yellow"
+        Write-Log "1. CHECK PARAMETERS:" "Yellow"
+        Write-Log "   • install.cmd exists and is valid" "Yellow"
+        Write-Log "   • EXE file is present in source folder" "Yellow"
+        Write-Log "   • Source and output folders are different" "Yellow"
+        Write-Log "" 
+        Write-Log "2. CHECK PERMISSIONS:" "Yellow"
+        Write-Log "   • Run as administrator" "Yellow"
+        Write-Log "   • Write permission in output folder" "Yellow"
+        Write-Log "   • No file locking by other programs" "Yellow"
+        Write-Log "" 
+        Write-Log "3. ANTIVIRUS / SECURITY:" "Yellow"
+        Write-Log "   • Add Windows Defender exclusion" "Yellow"
+        Write-Log "   • Temporarily exclude folders from antivirus" "Yellow"
+        Write-Log "   • Check UAC (User Account Control)" "Yellow"
+        Write-Log "" 
+        Write-Log "4. MANUAL TEST:" "Yellow"
+        Write-Log "   Try this command in command prompt:" "Yellow"
+        Write-Log "   cd /d `"$ScriptPath`"" "Yellow"
+        Write-Log "   `"$IntuneTool`" -c `"$SourceFolder`" -s `"install.cmd`" -o `"$OutputFolder`"" "Yellow"
+        Write-Log "" 
+        Write-Log "5. ALTERNATIVE SOLUTIONS:" "Yellow"
+        Write-Log "   • Try a different app folder" "Yellow"
+        Write-Log "   • Use shorter path names (no special characters)" "Yellow"
+        Write-Log "   • Copy files to local folder (not network)" "Yellow"
+        Write-Log "   • Restart computer if necessary" "Yellow"
+        
         return
-    }
     
     # Write metadata
     $Meta = @{

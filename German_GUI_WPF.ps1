@@ -638,34 +638,162 @@ exit /b 0
     
     # .intunewin erstellen (im Hintergrund)
     Write-Log "Erstelle .intunewin Paket (dies kann einen Moment dauern)..." "Blue"
+    Write-Log "Tool-Befehl: $IntuneTool -c `"$SourceFolder`" -s `"install.cmd`" -o `"$OutputFolder`"" "Gray"
     
-    $job = Start-Job -ScriptBlock {
-        param ($IntuneTool, $SourceFolder, $OutputFolder)
-        & $IntuneTool -c $SourceFolder -s "install.cmd" -o $OutputFolder
-    } -ArgumentList $IntuneTool, $SourceFolder, $OutputFolder
+    # Detaillierte Parameter-Validierung
+    Write-Log "Validiere Parameter..." "Blue"
+    Write-Log "   Source-Ordner: $SourceFolder (Existiert: $(Test-Path $SourceFolder))" "Gray"
+    Write-Log "   Setup-Datei: install.cmd (Existiert: $(Test-Path "$SourceFolder\install.cmd"))" "Gray"
+    Write-Log "   Output-Ordner: $OutputFolder (Existiert: $(Test-Path $OutputFolder))" "Gray"
+    Write-Log "   IntuneWinAppUtil: $IntuneTool (Existiert: $(Test-Path $IntuneTool))" "Gray"
     
-    # Warten bis Job beendet
-    while ($job.State -eq "Running") {
-        Start-Sleep -Milliseconds 500
+    # Teste Tool-Funktionalitaet
+    try {
+        Write-Log "Teste Tool-Version..." "Blue"
+        $versionResult = & $IntuneTool -h 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "Tool ist funktionsfaehig" "Green"
+        } else {
+            Write-Log "WARNUNG: Tool gibt Exit-Code $LASTEXITCODE zurueck" "Orange"
+        }
+    } catch {
+        Write-Log "WARNUNG: Tool-Test fehlgeschlagen: $($_.Exception.Message)" "Orange"
     }
     
-    # Job-Ergebnis pruefen
-    $jobOutput = Receive-Job -Job $job
-    Remove-Job -Job $job
+    # Tool direkt mit erweiterter Fehlerbehandlung ausfuehren
+    try {
+        Write-Log "=== ERWEITERTE TOOL-DIAGNOSE ===" "Blue"
+        
+        # Tool-Befehl zusammenstellen und protokollieren
+        $ToolArgs = @("-c", $SourceFolder, "-s", "install.cmd", "-o", $OutputFolder)
+        Write-Log "Fuehre aus: $IntuneTool $($ToolArgs -join ' ')" "Blue"
+        
+        # Process-Objekt fuer bessere Kontrolle erstellen
+        $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $ProcessInfo.FileName = $IntuneTool
+        $ProcessInfo.Arguments = $ToolArgs -join ' '
+        $ProcessInfo.RedirectStandardOutput = $true
+        $ProcessInfo.RedirectStandardError = $true
+        $ProcessInfo.UseShellExecute = $false
+        $ProcessInfo.CreateNoWindow = $true
+        $ProcessInfo.WorkingDirectory = $ScriptPath
+        
+        $Process = New-Object System.Diagnostics.Process
+        $Process.StartInfo = $ProcessInfo
+        
+        # Ausgabe-Handler
+        $StdOut = New-Object System.Text.StringBuilder
+        $StdErr = New-Object System.Text.StringBuilder
+        
+        $Process.add_OutputDataReceived({
+            if ($_.Data) {
+                [void]$StdOut.AppendLine($_.Data)
+            }
+        })
+        
+        $Process.add_ErrorDataReceived({
+            if ($_.Data) {
+                [void]$StdErr.AppendLine($_.Data)
+            }
+        })
+        
+        # Prozess starten
+        Write-Log "Starte IntuneWinAppUtil.exe..." "Blue"
+        $Process.Start()
+        $Process.BeginOutputReadLine()
+        $Process.BeginErrorReadLine()
+        
+        # Timeout von 3 Minuten fuer groessere Apps
+        $TimeoutMs = 180000
+        if (-not $Process.WaitForExit($TimeoutMs)) {
+            Write-Log "TIMEOUT: Tool reagiert nach 3 Minuten nicht - beende Prozess" "Red"
+            $Process.Kill()
+            $Process.WaitForExit()
+            throw "Tool-Timeout nach 3 Minuten"
+        }
+        
+        $ExitCode = $Process.ExitCode
+        $Process.Close()
+        
+        # Ausgabe protokollieren
+        $OutputText = $StdOut.ToString().Trim()
+        $ErrorText = $StdErr.ToString().Trim()
+        
+        Write-Log "=== TOOL-AUSGABE-ANALYSE ===" "Blue"
+        Write-Log "Exit-Code: $ExitCode" "Blue"
+        
+        if ($OutputText) {
+            Write-Log "Standard-Ausgabe:" "Blue"
+            $OutputText -split "`n" | ForEach-Object {
+                if ($_.Trim()) { Write-Log "  $($_.Trim())" "Gray" }
+            }
+        } else {
+            Write-Log "Keine Standard-Ausgabe erhalten" "Orange"
+        }
+        
+        if ($ErrorText) {
+            Write-Log "Fehler-Ausgabe:" "Red"
+            $ErrorText -split "`n" | ForEach-Object {
+                if ($_.Trim()) { Write-Log "  $($_.Trim())" "Red" }
+            }
+        } else {
+            Write-Log "Keine Fehler-Ausgabe erhalten" "Green"
+        }
+        
+        Write-Log "=========================" "Blue"
+        
+        # Erfolg basierend auf Exit-Code pruefen
+        if ($ExitCode -ne 0) {
+            Write-Log "❌ Tool beendet mit Fehler-Code: $ExitCode" "Red"
+            
+            # Haeufige Exit-Codes interpretieren
+            $errorMsg = switch ($ExitCode) {
+                1 { "Allgemeiner Anwendungsfehler - pruefen Sie Berechtigungen und Parameter" }
+                2 { "Ungueltige Parameter oder Dateien nicht gefunden" }
+                3 { "Zugriffsberechtigung verweigert - fuehren Sie als Administrator aus" }
+                5 { "Ausgabeordner nicht beschreibbar" }
+                87 { "Ungueltige Parameter-Syntax" }
+                -1 { "Schwerwiegender interner Fehler" }
+                default { "Unbekannter Exit-Code: $ExitCode" }
+            }
+            Write-Log "Fehler-Details: $errorMsg" "Red"
+        }
+        
+    } catch {
+        Write-Log "❌ KRITISCHER FEHLER beim Tool-Aufruf: $($_.Exception.Message)" "Red"
+        Write-Log "Exception-Typ: $($_.Exception.GetType().Name)" "Red"
+        
+        # Progress Bar ausblenden
+        $elements.progressBar.Visibility = "Collapsed"
+        $elements.progressBar.IsIndeterminate = $false
+        return
+    }
     
     # Progress Bar ausblenden
     $elements.progressBar.Visibility = "Collapsed"
     $elements.progressBar.IsIndeterminate = $false
     
     # Pruefen ob .intunewin erfolgreich erstellt wurde
-    $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" | Select-Object -First 1
+    Write-Log "=== ERFOLGS-KONTROLLE ===" "Blue"
+    Write-Log "Pruefe Ausgabe-Ordner: $OutputFolder" "Blue"
+    Start-Sleep -Seconds 2  # Warten fuer Dateisystem-Sync
+    
+    $IntunewinFile = Get-ChildItem -Path $OutputFolder -Filter "*.intunewin" -ErrorAction SilentlyContinue | Select-Object -First 1
+    
     if ($IntunewinFile) {
-        Write-Log ".intunewin Paket erfolgreich erstellt: $($IntunewinFile.Name)" "Green"
-    } else {
-        Write-Log "Fehler beim Erstellen des .intunewin Pakets!" "Red"
-        Write-Log "Tool-Ausgabe: $jobOutput" "Red"
-        return
-    }
+        Write-Log "✅ .intunewin Paket erfolgreich erstellt!" "Green"
+        Write-Log "Datei: $($IntunewinFile.Name)" "Green"
+        Write-Log "Groesse: $([math]::Round($IntunewinFile.Length / 1KB, 2)) KB" "Green"
+        Write-Log "Pfad: $($IntunewinFile.FullName)" "Green"
+        
+        Write-Log "=== TOOL-AUSGABE-ANALYSE ===" "Blue"
+        Write-Log "Exit-Code: $ExitCode" "Blue"
+        
+        if ($OutputText) {
+            Write-Log "Standard-Ausgabe:" "Blue"
+            $OutputText -split "`n" | ForEach-Object {
+            if ($_.Trim()) { Write-Log "   $_" "Gray" }
+        }
     
     # Metadaten schreiben
     $Meta = @{

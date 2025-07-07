@@ -310,6 +310,62 @@ Das Skript nutzt **intelligente Erkennungsmechanismen**:
 - ✏️ Sie können die `uninstall.cmd` manuell anpassen
 - 📖 Konsultieren Sie die Dokumentation Ihrer Software
 
+## 🔧 **Fehlerbehebung**
+
+Falls der Ausgabe-Ordner leer bleibt oder die .intunewin-Erstellung fehlschlägt, befolgen Sie diese Schritte:
+
+### **1. Automatische Diagnose verwenden**
+
+Führen Sie das Diagnose-Tool aus, um häufige Probleme zu identifizieren:
+
+```powershell
+# Zum Tool-Ordner navigieren
+cd "C:\Pfad\Zu\PackingIntunewin"
+
+# Diagnose für eine bestimmte App ausführen
+powershell -ExecutionPolicy Bypass -File "Diagnose-IntuneWinTool.ps1" -AppFolderName "MeineApp"
+
+# Oder für Standard-App "test"
+powershell -ExecutionPolicy Bypass -File "Diagnose-IntuneWinTool.ps1"
+```
+
+Das Diagnose-Tool überprüft:
+- ✅ Ordnerstruktur und Dateien
+- ✅ IntuneWinAppUtil.exe Verfügbarkeit und Funktionalität
+- ✅ Berechtigungen und Administrator-Status
+- ✅ Vollständige Simulation der Paket-Erstellung
+- ✅ Detaillierte Fehleranalyse und Lösungsvorschläge
+
+### **2. Häufige Ursachen und Lösungen**
+
+| Problem | Ursache | Lösung |
+|---------|---------|---------|
+| **Leerer Ausgabe-Ordner** | Tool läuft, aber erstellt keine Datei | Als Administrator ausführen |
+| **"Tool-Ausgabe: leer"** | Stille Tool-Fehler oder Berechtigungen | Antivirus-Ausnahme hinzufügen |
+| **"EXE nicht gefunden"** | Keine .exe im apps-Ordner | .exe-Datei in den App-Ordner kopieren |
+| **Tool funktioniert nicht** | IntuneWinAppUtil.exe beschädigt | Tool neu herunterladen |
+| **Zugriff verweigert** | Schreibrechte fehlen | Als Administrator oder Ordner-Berechtigungen prüfen |
+
+### **3. Manueller Test**
+
+Falls das GUI fehlschlägt, testen Sie das Tool manuell:
+
+```cmd
+# Kommandozeile als Administrator öffnen
+cd /d "C:\Pfad\Zu\PackingIntunewin"
+
+# Tool direkt aufrufen
+"IntunewinApps\tools\IntuneWinAppUtil.exe" -c "apps\MeineApp" -s "install.cmd" -o "IntunewinApps\MeineApp"
+```
+
+### **4. Erweiterte Problemlösung**
+
+- **Windows Defender**: Ordner zu Ausnahmen hinzufügen
+- **Antivirus**: Temporär deaktivieren oder Ausnahme erstellen
+- **Pfade**: Keine Sonderzeichen oder Leerzeichen in Ordnernamen
+- **Dateisystem**: Lokalen Ordner statt Netzwerk-Pfad verwenden
+- **UAC**: User Account Control prüfen
+
 ## 🤝 **Mitwirken**
 
 Verbesserungsvorschläge und Pull Requests sind willkommen!

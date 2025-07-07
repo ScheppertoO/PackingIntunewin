@@ -310,6 +310,63 @@ The script uses **intelligent detection mechanisms**:
 - ✏️ You can manually adjust the `uninstall.cmd`
 - 📖 Consult your software's documentation
 
+## 🔧 **Troubleshooting**
+
+If the output folder remains empty or .intunewin creation fails, follow these steps:
+
+### **1. Use Automatic Diagnostics**
+
+Run the diagnostic tool to identify common issues:
+
+```powershell
+# Navigate to tool folder
+cd "C:\Path\To\PackingIntunewin"
+
+# Run diagnostics for a specific app
+powershell -ExecutionPolicy Bypass -File "Diagnose-IntuneWinTool.ps1" -AppFolderName "MyApp"
+
+# Or for default app "test"
+powershell -ExecutionPolicy Bypass -File "Diagnose-IntuneWinTool.ps1"
+```
+
+The diagnostic tool checks:
+
+- ✅ Folder structure and files
+- ✅ IntuneWinAppUtil.exe availability and functionality  
+- ✅ Permissions and administrator status
+- ✅ Complete package creation simulation
+- ✅ Detailed error analysis and solution recommendations
+
+### **2. Common Causes and Solutions**
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **Empty output folder** | Tool runs but creates no file | Run as administrator |
+| **"Tool output: empty"** | Silent tool errors or permissions | Add antivirus exception |
+| **"EXE not found"** | No .exe in apps folder | Copy .exe file to app folder |
+| **Tool not working** | IntuneWinAppUtil.exe corrupted | Re-download tool |
+| **Access denied** | Missing write permissions | Run as administrator or check folder permissions |
+
+### **3. Manual Testing**
+
+If the GUI fails, test the tool manually:
+
+```cmd
+# Open command prompt as administrator
+cd /d "C:\Path\To\PackingIntunewin"
+
+# Call tool directly
+"IntunewinApps\tools\IntuneWinAppUtil.exe" -c "apps\MyApp" -s "install.cmd" -o "IntunewinApps\MyApp"
+```
+
+### **4. Advanced Troubleshooting**
+
+- **Windows Defender**: Add folders to exclusions
+- **Antivirus**: Temporarily disable or create exception
+- **Paths**: No special characters or spaces in folder names
+- **File system**: Use local folder instead of network path
+- **UAC**: Check User Account Control settings
+
 ## 🤝 **Contributing**
 
 Improvement suggestions and pull requests are welcome!
