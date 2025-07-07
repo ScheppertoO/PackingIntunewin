@@ -55,7 +55,7 @@ do {
         }
         default {
             Write-Host "Invalid choice. Please enter 1, 2, or Q" -ForegroundColor Red
-            Write-Host "Ungültige Auswahl. Bitte 1, 2 oder Q eingeben" -ForegroundColor Red
+            Write-Host "Ungueltige Auswahl. Bitte 1, 2 oder Q eingeben" -ForegroundColor Red
             $validChoice = $false
         }
     }
@@ -63,5 +63,5 @@ do {
 
 Write-Host ""
 Write-Host "Press any key to exit..." -ForegroundColor Gray
-Write-Host "Drücke eine beliebige Taste zum Beenden..." -ForegroundColor Gray
+Write-Host "Druecke eine beliebige Taste zum Beenden..." -ForegroundColor Gray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

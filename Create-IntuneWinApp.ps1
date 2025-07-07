@@ -129,7 +129,7 @@ function Test-IntuneWinAppUtil {
                 
                 return $true
             } else {
-                Write-Host "Heruntergeladene Datei zu klein (möglicherweise korrupt)" -ForegroundColor Red
+                Write-Host "Heruntergeladene Datei zu klein (moeglicherweise korrupt)" -ForegroundColor Red
                 Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
             }
         }

@@ -369,7 +369,7 @@ function Test-IntuneWinAppUtilGUI {
                 
                 return $true
             } else {
-                Write-Log "Heruntergeladene Datei zu klein (möglicherweise korrupt)" "Red"
+                Write-Log "Heruntergeladene Datei zu klein (moeglicherweise korrupt)" "Red"
                 Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
             }
         }

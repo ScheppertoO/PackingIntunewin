@@ -1,6 +1,6 @@
 # 📦 PackingIntunewin - Portable IntuneWin App Packaging Tool
 
-Ein benutzerfreundliches, **vollständig portables** PowerShell-Tool zur automatischen Erstellung von Microsoft Intune `.intunewin` Paketen aus EXE-Dateien.
+Ein benutzerfreundliches, **vollstaendig portables** PowerShell-Tool zur automatischen Erstellung von Microsoft Intune `.intunewin` Paketen aus EXE-Dateien.
 
 ## 🌍 **Language / Sprache**
 
@@ -9,54 +9,54 @@ Ein benutzerfreundliches, **vollständig portables** PowerShell-Tool zur automat
 
 ## 🎯 **Ziel**
 
-Das Verpacken von `.exe`-Dateien in `.intunewin`-Apps so einfach und automatisiert wie möglich zu gestalten - **ohne manuelle Konfiguration oder feste Pfade**.
+Das Verpacken von `.exe`-Dateien in `.intunewin`-Apps so einfach und automatisiert wie moeglich zu gestalten - **ohne manuelle Konfiguration oder feste Pfade**.
 
 ## ✨ **Features**
 
-- 🚀 **Vollständig portabel** - funktioniert von jedem Speicherort
+- 🚀 **Vollstaendig portabel** - funktioniert von jedem Speicherort
 - 🔄 **Automatischer Download** der Microsoft IntuneWinAppUtil.exe
 - 🗑️ **Intelligente Deinstallation** - Registry-Analyse & EXE-Parameter-Tests
 - 📝 **Automatische Batch-Erstellung** - install.cmd & uninstall.cmd
-- 📊 **App-Übersicht** - zeigt verfügbare Apps mit Status
-- 🔍 **Fehlervalidierung** - prüft EXE-Anzahl und Ordnerstruktur
-- 💾 **Vollständige Metadaten** - für Microsoft Intune optimiert
-- 🎨 **Farbige Ausgaben** - übersichtliche Fortschrittsanzeige
+- 📊 **App-uebersicht** - zeigt verfuegbare Apps mit Status
+- 🔍 **Fehlervalidierung** - prueft EXE-Anzahl und Ordnerstruktur
+- 💾 **Vollstaendige Metadaten** - fuer Microsoft Intune optimiert
+- 🎨 **Farbige Ausgaben** - uebersichtliche Fortschrittsanzeige
 
-## ⚠️ **Ausführungsrichtlinien-Hinweis**
+## ⚠️ **Ausfuehrungsrichtlinien-Hinweis**
 
-Dieses Tool enthält **unsignierte PowerShell-Skripte**. Aufgrund der Windows-Sicherheitsrichtlinien können Ausführungsfehler auftreten. Hier sind die Lösungen:
+Dieses Tool enthaelt **unsignierte PowerShell-Skripte**. Aufgrund der Windows-Sicherheitsrichtlinien koennen Ausfuehrungsfehler auftreten. Hier sind die Loesungen:
 
-### **Lösung 1: Batch-Datei verwenden (Am einfachsten)**
+### **Loesung 1: Batch-Datei verwenden (Am einfachsten)**
 
-- **Doppelklick** auf `START-TOOL.bat` - behandelt automatisch die Ausführungsrichtlinie
+- **Doppelklick** auf `START-TOOL.bat` - behandelt automatisch die Ausfuehrungsrichtlinie
 
-### **Lösung 2: PowerShell-Kommandozeile**
+### **Loesung 2: PowerShell-Kommandozeile**
 
 ```powershell
 # Zum Tool-Ordner navigieren
 cd "C:\Pfad\Zu\PackingIntunewin"
 
-# Mit umgangener Ausführungsrichtlinie starten
+# Mit umgangener Ausfuehrungsrichtlinie starten
 powershell -ExecutionPolicy Bypass -File "Start-IntuneWinTool.ps1"
 ```
 
-### **Lösung 3: Manuelle Richtlinien-Änderung**
+### **Loesung 3: Manuelle Richtlinien-aenderung**
 
 ```powershell
-# Ausführungsrichtlinie nur für aktuelle Sitzung setzen
+# Ausfuehrungsrichtlinie nur fuer aktuelle Sitzung setzen
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 .\Start-IntuneWinTool.ps1
 ```
 
-### **Lösung 4: Direkte Skript-Ausführung**
+### **Loesung 4: Direkte Skript-Ausfuehrung**
 
 ```powershell
-# Einzelne Skripte direkt ausführen
+# Einzelne Skripte direkt ausfuehren
 powershell -ExecutionPolicy Bypass -File "German_GUI_WPF.ps1"
 powershell -ExecutionPolicy Bypass -File "ENG_GUI_WPF.ps1"
 ```
 
-**Hinweis:** Diese Änderungen sind **temporär** und betreffen nur die aktuelle Sitzung. Ihre System-Sicherheitseinstellungen bleiben unverändert.
+**Hinweis:** Diese aenderungen sind **temporaer** und betreffen nur die aktuelle Sitzung. Ihre System-Sicherheitseinstellungen bleiben unveraendert.
 
 ## 📁 **Ordnerstruktur**
 
@@ -71,7 +71,7 @@ PackingIntunewin/
 ├── README.md                            # 📖 Englische Dokumentation
 ├── README.de.md                         # 📖 Diese Dokumentation (Deutsch)
 │
-├── apps/                                # 📥 Input-Ordner für Ihre Apps
+├── apps/                                # 📥 Input-Ordner fuer Ihre Apps
 │   ├── Chrome/                          # Beispiel: Chrome-App
 │   │   └── chrome-installer.exe         # Ihre EXE-Datei
 │   ├── VLC/                            # Beispiel: VLC-App
@@ -86,14 +86,14 @@ PackingIntunewin/
     ├── Chrome/                         # 📦 Verpackte Chrome-App
     │   ├── install.cmd                 # Automatisch generiert
     │   ├── uninstall.cmd              # Automatisch generiert
-    │   ├── chrome-installer.intunewin  # 🎯 Fertiges Paket für Intune
-    │   └── metadata.json               # Vollständige Metadaten
+    │   ├── chrome-installer.intunewin  # 🎯 Fertiges Paket fuer Intune
+    │   └── metadata.json               # Vollstaendige Metadaten
     │
     └── YourApp/                        # 📦 Ihre verpackte App
         ├── install.cmd                 # Automatisch generiert
         ├── uninstall.cmd              # Automatisch generiert  
-        ├── yourapp.intunewin           # 🎯 Fertiges Paket für Intune
-        └── metadata.json               # Vollständige Metadaten
+        ├── yourapp.intunewin           # 🎯 Fertiges Paket fuer Intune
+        └── metadata.json               # Vollstaendige Metadaten
 ```
 
 ## 🚀 **Schnellstart**
@@ -105,21 +105,21 @@ PackingIntunewin/
 git clone https://github.com/ScheppertoO/PackingIntunewin.git
 cd PackingIntunewin
 
-# 2. Rechtsklick auf Start-IntuneWinTool.ps1 und "Mit PowerShell ausführen" wählen
-# Oder in PowerShell ausführen:
+# 2. Rechtsklick auf Start-IntuneWinTool.ps1 und "Mit PowerShell ausfuehren" waehlen
+# Oder in PowerShell ausfuehren:
 .\Start-IntuneWinTool.ps1
 
 # 3. ODER: Doppelklick auf START-TOOL.bat (einfachste Option)
 ```
 
-### **Option 2: Direkte Skript-Ausführung**
+### **Option 2: Direkte Skript-Ausfuehrung**
 
 ```powershell
 # 1. Repository klonen oder herunterladen
 git clone https://github.com/ScheppertoO/PackingIntunewin.git
 cd PackingIntunewin
 
-# 2. Spezifisches Skript direkt ausführen
+# 2. Spezifisches Skript direkt ausfuehren
 .\Create-IntuneWinApp.ps1     # Kommandozeilen-Version
 .\German_GUI_WPF.ps1          # Deutsche GUI
 .\ENG_GUI_WPF.ps1            # Englische GUI
@@ -128,18 +128,18 @@ cd PackingIntunewin
 ### **App vorbereiten**
 
 ```powershell
-# Erstellen Sie einen Ordner für Ihre App im 'apps' Verzeichnis
+# Erstellen Sie einen Ordner fuer Ihre App im 'apps' Verzeichnis
 mkdir "apps\MeineApp"
 
 # Kopieren Sie Ihre EXE-Datei hinein (genau eine EXE pro Ordner!)
 copy "C:\Downloads\meine-app-installer.exe" "apps\MeineApp\"
 ```
 
-### **Ausführen und konfigurieren**
+### **Ausfuehren und konfigurieren**
 
-Das Skript führt Sie durch den Prozess:
+Das Skript fuehrt Sie durch den Prozess:
 
-- 📋 Zeigt verfügbare Apps an
+- 📋 Zeigt verfuegbare Apps an
 - ❓ Fragt nach App-Name und Neustart-Anforderungen
 - 🔍 Ermittelt automatisch Deinstallations-Informationen
 - 📦 Erstellt das fertige `.intunewin` Paket
@@ -149,18 +149,18 @@ Das Skript führt Sie durch den Prozess:
 ### **Tool Download-Prozess**
 
 ```text
-🔧 Prüfe IntuneWinAppUtil.exe...
+🔧 Pruefe IntuneWinAppUtil.exe...
 ⚠️ IntuneWinAppUtil.exe nicht gefunden, lade von alternativen Quellen herunter...
 🌐 Suche nach der neuesten Version...
 📥 Gefunden: IntuneWinAppUtil.zip (Version: v1.8.6)
 📋 Tool-Version: Microsoft Intune Win32 Content Prep Tool version 1.8.6.0
-✅ Download erfolgreich! Dateigröße: 0.89 MB
+✅ Download erfolgreich! Dateigroeße: 0.89 MB
 ```
 
-### **App-Status Übersicht**
+### **App-Status uebersicht**
 
 ```text
-📋 Verfügbare Apps im 'apps' Ordner:
+📋 Verfuegbare Apps im 'apps' Ordner:
    ✅ Chrome
    ✅ VLC
    ❌ Broken-App (Keine EXE)
@@ -171,7 +171,7 @@ Das Skript führt Sie durch den Prozess:
 
 ```text
 🔧 Ermittle Deinstallationsinformationen...
-🔍 Suche nach Deinstallationsinformationen für 'Chrome'...
+🔍 Suche nach Deinstallationsinformationen fuer 'Chrome'...
 ✅ Registry-Eintrag gefunden!
 ✅ Gefunden: Google Chrome
 📝 Verwende QuietUninstallString: MsiExec.exe /X{GUID} /quiet
@@ -232,12 +232,12 @@ exit /b 0
 Nach der Erstellung erhalten Sie alle erforderlichen Informationen:
 
 ```text
-📋 Informationen für Microsoft Intune:
+📋 Informationen fuer Microsoft Intune:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 App-Name: YourApp
 Install-Befehl: install.cmd
 Uninstall-Befehl: uninstall.cmd
-Rückgabecodes: 0 (Erfolg), 3010 (Neustart erforderlich)
+Rueckgabecodes: 0 (Erfolg), 3010 (Neustart erforderlich)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -253,7 +253,7 @@ Das Skript nutzt **intelligente Erkennungsmechanismen**:
    - Durchsucht `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*`
 
 2. **EXE-Parameter Tests** (Fallback)
-   - Testet gängige Parameter: `/uninstall`, `/remove`, `/u`, `/x`
+   - Testet gaengige Parameter: `/uninstall`, `/remove`, `/u`, `/x`
    - Kombiniert mit Silent-Flags: `/silent`, `/quiet`, `/s`, `/q`
 
 3. **Standard-Fallback**
@@ -271,27 +271,27 @@ Das Skript nutzt **intelligente Erkennungsmechanismen**:
 ### **App-Vorbereitung**
 
 - ✅ **Eine EXE pro Ordner**: Genau eine EXE-Datei pro App-Ordner
-- ✅ **Aussagekräftige Namen**: Verwenden Sie klare Ordnernamen (z.B. "Chrome", "VLC")
-- ✅ **Silent-Parameter testen**: Prüfen Sie vorab, ob Ihre EXE Silent-Installation unterstützt
+- ✅ **Aussagekraeftige Namen**: Verwenden Sie klare Ordnernamen (z.B. "Chrome", "VLC")
+- ✅ **Silent-Parameter testen**: Pruefen Sie vorab, ob Ihre EXE Silent-Installation unterstuetzt
 
-### **Portabilität**
+### **Portabilitaet**
 
 - 📁 **Kompletten Ordner kopieren**: Kopieren Sie den gesamten `PackingIntunewin` Ordner
 - 🔄 **Keine Pfad-Anpassungen**: Das Skript funktioniert von jedem Speicherort
-- 💾 **USB-Stick kompatibel**: Perfekt für mobilen Einsatz
+- 💾 **USB-Stick kompatibel**: Perfekt fuer mobilen Einsatz
 
 ### **Intune-Integration**
 
 - 📝 **Erkennungsregeln**: Konfigurieren Sie Erkennungsregeln manuell in Intune
-- 🔍 **Registry-Erkennung**: Nutzen Sie die Metadaten für Registry-basierte Erkennung
-- 🔄 **Exit-Codes**: Beachten Sie die dokumentierten Rückgabecodes
+- 🔍 **Registry-Erkennung**: Nutzen Sie die Metadaten fuer Registry-basierte Erkennung
+- 🔄 **Exit-Codes**: Beachten Sie die dokumentierten Rueckgabecodes
 
-## 🆘 **Häufige Probleme & Lösungen**
+## 🆘 **Haeufige Probleme & Loesungen**
 
 ### **"IntuneWinAppUtil.exe konnte nicht heruntergeladen werden"**
 
-- 🌐 Internetverbindung prüfen
-- 🔒 Firewall/Proxy-Einstellungen prüfen
+- 🌐 Internetverbindung pruefen
+- 🔒 Firewall/Proxy-Einstellungen pruefen
 - 📥 Das Skript versucht automatisch mehrere Download-Methoden:
   - Alternative Mirror-Sites
   - GitHub Release-Archive
@@ -300,86 +300,86 @@ Das Skript nutzt **intelligente Erkennungsmechanismen**:
 
 ### **"Keine EXE-Dateien gefunden"**
 
-- 📁 App-Ordner unter `apps\YourApp\` prüfen
+- 📁 App-Ordner unter `apps\YourApp\` pruefen
 - ✅ Stellen Sie sicher, dass genau eine `.exe` Datei vorhanden ist
-- 📋 Nutzen Sie die App-Übersicht zur Diagnose
+- 📋 Nutzen Sie die App-uebersicht zur Diagnose
 
 ### **"Deinstallation nicht gefunden"**
 
 - 🔍 Das Skript testet automatisch verschiedene Parameter
-- ✏️ Sie können die `uninstall.cmd` manuell anpassen
+- ✏️ Sie koennen die `uninstall.cmd` manuell anpassen
 - 📖 Konsultieren Sie die Dokumentation Ihrer Software
 
 ## 🔧 **Fehlerbehebung**
 
-Falls der Ausgabe-Ordner leer bleibt oder die .intunewin-Erstellung fehlschlägt, befolgen Sie diese Schritte:
+Falls der Ausgabe-Ordner leer bleibt oder die .intunewin-Erstellung fehlschlaegt, befolgen Sie diese Schritte:
 
 ### **1. Automatische Diagnose verwenden**
 
-Führen Sie das Diagnose-Tool aus, um häufige Probleme zu identifizieren:
+Fuehren Sie das Diagnose-Tool aus, um haeufige Probleme zu identifizieren:
 
 ```powershell
 # Zum Tool-Ordner navigieren
 cd "C:\Pfad\Zu\PackingIntunewin"
 
-# Diagnose für eine bestimmte App ausführen
+# Diagnose fuer eine bestimmte App ausfuehren
 powershell -ExecutionPolicy Bypass -File "Diagnose-IntuneWinTool.ps1" -AppFolderName "MeineApp"
 
-# Oder für Standard-App "test"
+# Oder fuer Standard-App "test"
 powershell -ExecutionPolicy Bypass -File "Diagnose-IntuneWinTool.ps1"
 ```
 
-Das Diagnose-Tool überprüft:
+Das Diagnose-Tool ueberprueft:
 - ✅ Ordnerstruktur und Dateien
-- ✅ IntuneWinAppUtil.exe Verfügbarkeit und Funktionalität
+- ✅ IntuneWinAppUtil.exe Verfuegbarkeit und Funktionalitaet
 - ✅ Berechtigungen und Administrator-Status
-- ✅ Vollständige Simulation der Paket-Erstellung
-- ✅ Detaillierte Fehleranalyse und Lösungsvorschläge
+- ✅ Vollstaendige Simulation der Paket-Erstellung
+- ✅ Detaillierte Fehleranalyse und Loesungsvorschlaege
 
-### **2. Häufige Ursachen und Lösungen**
+### **2. Haeufige Ursachen und Loesungen**
 
-| Problem | Ursache | Lösung |
+| Problem | Ursache | Loesung |
 |---------|---------|---------|
-| **Leerer Ausgabe-Ordner** | Tool läuft, aber erstellt keine Datei | Als Administrator ausführen |
-| **"Tool-Ausgabe: leer"** | Stille Tool-Fehler oder Berechtigungen | Antivirus-Ausnahme hinzufügen |
+| **Leerer Ausgabe-Ordner** | Tool laeuft, aber erstellt keine Datei | Als Administrator ausfuehren |
+| **"Tool-Ausgabe: leer"** | Stille Tool-Fehler oder Berechtigungen | Antivirus-Ausnahme hinzufuegen |
 | **"EXE nicht gefunden"** | Keine .exe im apps-Ordner | .exe-Datei in den App-Ordner kopieren |
-| **Tool funktioniert nicht** | IntuneWinAppUtil.exe beschädigt | Tool neu herunterladen |
-| **Zugriff verweigert** | Schreibrechte fehlen | Als Administrator oder Ordner-Berechtigungen prüfen |
+| **Tool funktioniert nicht** | IntuneWinAppUtil.exe beschaedigt | Tool neu herunterladen |
+| **Zugriff verweigert** | Schreibrechte fehlen | Als Administrator oder Ordner-Berechtigungen pruefen |
 
 ### **3. Manueller Test**
 
-Falls das GUI fehlschlägt, testen Sie das Tool manuell:
+Falls das GUI fehlschlaegt, testen Sie das Tool manuell:
 
 ```cmd
-# Kommandozeile als Administrator öffnen
+# Kommandozeile als Administrator oeffnen
 cd /d "C:\Pfad\Zu\PackingIntunewin"
 
 # Tool direkt aufrufen
 "IntunewinApps\tools\IntuneWinAppUtil.exe" -c "apps\MeineApp" -s "install.cmd" -o "IntunewinApps\MeineApp"
 ```
 
-### **4. Erweiterte Problemlösung**
+### **4. Erweiterte Problemloesung**
 
-- **Windows Defender**: Ordner zu Ausnahmen hinzufügen
-- **Antivirus**: Temporär deaktivieren oder Ausnahme erstellen
+- **Windows Defender**: Ordner zu Ausnahmen hinzufuegen
+- **Antivirus**: Temporaer deaktivieren oder Ausnahme erstellen
 - **Pfade**: Keine Sonderzeichen oder Leerzeichen in Ordnernamen
 - **Dateisystem**: Lokalen Ordner statt Netzwerk-Pfad verwenden
-- **UAC**: User Account Control prüfen
+- **UAC**: User Account Control pruefen
 
 ## 🤝 **Mitwirken**
 
-Verbesserungsvorschläge und Pull Requests sind willkommen!
+Verbesserungsvorschlaege und Pull Requests sind willkommen!
 
 1. Repository forken
 2. Feature-Branch erstellen
-3. Änderungen committen
+3. aenderungen committen
 4. Pull Request erstellen
 
 ## 📄 **Lizenz**
 
 Dieses Projekt steht unter der MIT-Lizenz.
 
-## 🔗 **Nützliche Links**
+## 🔗 **Nuetzliche Links**
 
 - [Microsoft Intune Win32 Content Prep Tool](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool)
 - [Microsoft Intune Dokumentation](https://docs.microsoft.com/de-de/mem/intune/)
@@ -387,8 +387,8 @@ Dieses Projekt steht unter der MIT-Lizenz.
 
 ---
 
-💡 **Das Tool ist vollständig portabel und kann überall verwendet werden!** 🚀
+💡 **Das Tool ist vollstaendig portabel und kann ueberall verwendet werden!** 🚀
 
-## 🤖 **KI-Unterstützung**
+## 🤖 **KI-Unterstuetzung**
 
-Dieses Projekt wurde mit Unterstützung von KI (GitHub Copilot) entwickelt, um Code-Qualität, Dokumentation und Benutzererfahrung zu verbessern.
+Dieses Projekt wurde mit Unterstuetzung von KI (GitHub Copilot) entwickelt, um Code-Qualitaet, Dokumentation und Benutzererfahrung zu verbessern.
