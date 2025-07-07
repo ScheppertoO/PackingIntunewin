@@ -27,7 +27,7 @@ do {
         "1" {
             Write-Host ""
             Write-Host "Starting German GUI..." -ForegroundColor Green
-            $GermanScript = Join-Path $ScriptPath "German_GUI_WPF.ps1"
+            $GermanScript = Join-Path $ScriptPath "scripts\German_GUI_WPF.ps1"
             if (Test-Path $GermanScript) {
                 & $GermanScript
             } else {
@@ -39,7 +39,7 @@ do {
         "2" {
             Write-Host ""
             Write-Host "Starting English GUI..." -ForegroundColor Green
-            $EnglishScript = Join-Path $ScriptPath "ENG_GUI_WPF.ps1"
+            $EnglishScript = Join-Path $ScriptPath "scripts\ENG_GUI_WPF.ps1"
             if (Test-Path $EnglishScript) {
                 & $EnglishScript
             } else {
