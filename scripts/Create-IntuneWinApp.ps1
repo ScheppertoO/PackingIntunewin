@@ -1,11 +1,11 @@
 # Portable IntuneWin App Packaging Tool
 # Arbeitet mit relativen Pfaden - unabhaengig vom Speicherort
 
-# Basis-Pfade relativ zum Skript-Ordner
-$ScriptPath = $PSScriptRoot
+# Base paths relative to main directory (one level up from scripts folder)
+$ScriptPath = Split-Path $PSScriptRoot -Parent
 $BaseInputPath = Join-Path $ScriptPath "apps"
 $BaseOutputPath = Join-Path $ScriptPath "IntunewinApps"
-$ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"
+$ToolsPath = Join-Path $ScriptPath "tools"
 $IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
 $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
 

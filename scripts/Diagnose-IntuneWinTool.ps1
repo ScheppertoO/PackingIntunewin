@@ -9,8 +9,8 @@ Write-Host "=== INTUNE WIN TOOL DIAGNOSTICS ===" -ForegroundColor Cyan
 Write-Host "App folder to test: $AppFolderName" -ForegroundColor Yellow
 Write-Host ""
 
-# Get script location
-$ScriptPath = $PSScriptRoot
+# Get script location (main directory is one level up from scripts folder)
+$ScriptPath = Split-Path $PSScriptRoot -Parent
 $BaseInputPath = Join-Path $ScriptPath "apps"
 $BaseOutputPath = Join-Path $ScriptPath "IntunewinApps"
 $ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"

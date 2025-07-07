@@ -3,11 +3,11 @@
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
 
-# Base paths relative to script folder
-$ScriptPath = $PSScriptRoot
+# Base paths relative to main directory (one level up from scripts folder)
+$ScriptPath = Split-Path $PSScriptRoot -Parent
 $BaseInputPath = Join-Path $ScriptPath "apps"
 $BaseOutputPath = Join-Path $ScriptPath "IntunewinApps"
-$ToolsPath = Join-Path $ScriptPath "IntunewinApps\tools"
+$ToolsPath = Join-Path $ScriptPath "tools"
 $IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
 $GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
 
