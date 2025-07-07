@@ -44,7 +44,7 @@ choco search intunewinapputil
 
 After placing the file in the `tools\` folder:
 
-1. **File Size Check**: Should be 1-3 MB (files under 100KB are corrupted)
+1. **File Size Check**: Should be around 50-60 KB (files under 20KB are corrupted)
 2. **Function Test**: 
    ```powershell
    .\tools\IntuneWinAppUtil.exe /?
