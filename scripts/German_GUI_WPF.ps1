@@ -458,7 +458,7 @@ function Test-IntuneWinAppUtilGUI {
                 Write-Log "URL fehlgeschlagen: $($_.Exception.Message)" "Red"
                 if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
             }
-        }
+        } # <--- This closing brace was missing
         
         # Method 2: ZIP download and extraction
         if (-not $Downloaded) {
