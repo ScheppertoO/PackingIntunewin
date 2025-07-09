@@ -69,7 +69,7 @@ PackingIntunewin\
 ### Common Issues:
 - **Antivirus blocking**: Add `tools\` folder to exceptions
 - **Network restrictions**: Try downloading from different network
-- **File corruption**: Re-download if file is under 100KB
+- **File corruption**: Re-download if file is under 20KB
 
 ### Diagnostic Command:
 ```powershell
