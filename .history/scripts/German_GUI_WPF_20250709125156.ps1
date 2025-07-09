@@ -416,50 +416,49 @@ function Test-IntuneWinAppUtilGUI {
                 "https://aka.ms/intunewinapputildownload"
             )
         
-            foreach ($Url in $AlternativeUrls) {
-                try {
-                    Write-Log "  Trying: $Url" 
-                    
-                    $webClient = New-Object System.Net.WebClient
-                    $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
-                    $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
-                    $webClient.Timeout = 30000  # 30 seconds timeout
-                    
-                    $webClient.DownloadFile($Url, $IntuneTool)
-                    
-                    # Validierung der heruntergeladenen Datei (korrigierte Größe für .NET Tool)
-                    if (Test-Path $IntuneTool) {
-                        $FileInfo = Get-Item $IntuneTool
-                        if ($FileInfo.Length -gt 20000) {  # Mindestens 20KB (53.9KB ist normale Größe)
-                            # Funktionstest durchfuehren
-                            try {
-                                $testResult = & $IntuneTool /? 2>&1
-                                if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep Tool|Usage") {
-                                    Write-Log "Download und Funktionstest erfolgreich von: $Url" "Green"
-                                    Write-Log "Dateigroesse: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Green"
-                                    $Downloaded = $true
-                                    break
-                                } else {
-                                    Write-Log "Datei heruntergeladen aber Funktionstest fehlgeschlagen" "Orange"
-                                    Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
-                                }
-                            } catch {
-                                Write-Log "Datei heruntergeladen aber beschaedigt: $($_.Exception.Message)" "Orange"
+        foreach ($Url in $AlternativeUrls) {
+            try {
+                Write-Log "  Trying: $Url" 
+                
+                $webClient = New-Object System.Net.WebClient
+                $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                $webClient.Proxy = [System.Net.WebRequest]::DefaultWebProxy
+                $webClient.Proxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials
+                $webClient.Timeout = 30000  # 30 seconds timeout
+                
+                $webClient.DownloadFile($Url, $IntuneTool)
+                
+                # Validierung der heruntergeladenen Datei (korrigierte Größe für .NET Tool)
+                if (Test-Path $IntuneTool) {
+                    $FileInfo = Get-Item $IntuneTool
+                    if ($FileInfo.Length -gt 20000) {  # Mindestens 20KB (53.9KB ist normale Größe)
+                        # Funktionstest durchfuehren
+                        try {
+                            $testResult = & $IntuneTool /? 2>&1
+                            if ($LASTEXITCODE -eq 0 -or $testResult -match "IntuneWinAppUtil|Microsoft|Content Prep Tool|Usage") {
+                                Write-Log "Download und Funktionstest erfolgreich von: $Url" "Green"
+                                Write-Log "Dateigroesse: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Green"
+                                $Downloaded = $true
+                                break
+                            } else {
+                                Write-Log "Datei heruntergeladen aber Funktionstest fehlgeschlagen" "Orange"
                                 Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
                             }
-                        } else {
-                            Write-Log "File too small: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Orange"
+                        } catch {
+                            Write-Log "Datei heruntergeladen aber beschaedigt: $($_.Exception.Message)" "Orange"
                             Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
                         }
+                    } else {
+                        Write-Log "File too small: $([math]::Round($FileInfo.Length / 1KB, 2)) KB" "Orange"
+                        Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue
                     }
-                    
-                } catch {
-                    Write-Log "URL fehlgeschlagen: $($_.Exception.Message)" "Red"
-                    if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
                 }
+                
+            } catch {
+                Write-Log "URL fehlgeschlagen: $($_.Exception.Message)" "Red"
+                if (Test-Path $IntuneTool) { Remove-Item $IntuneTool -Force -ErrorAction SilentlyContinue }
             }
-        }
+        } # <--- This closing brace was missing
         
         # Method 2: ZIP download and extraction
         if (-not $Downloaded) {
@@ -538,8 +537,7 @@ function Test-IntuneWinAppUtilGUI {
                     if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
                 }
             }
-        }
-        
+        } 
         # Method 3: Alternative sources with better error handling
         if (-not $Downloaded) {
             Write-Log "ZIP extraction failed, trying alternative sources..." "Orange"
