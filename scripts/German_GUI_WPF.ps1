@@ -8,7 +8,6 @@ $BaseInputPath = Join-Path $ScriptPath "apps"
 $BaseOutputPath = Join-Path $ScriptPath "IntunewinApps"
 $ToolsPath = Join-Path $ScriptPath "tools"
 $IntuneTool = Join-Path $ToolsPath "IntuneWinAppUtil.exe"
-$GitHubRepo = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool"
 
 # XAML-Definition fuer die GUI
 [xml]$xaml = @"
@@ -150,9 +149,9 @@ function Initialize-GUI {
     # Event-Handler fuer Buttons
     $elements.btnInitialize.Add_Click({ Initialize-FoldersGUI })
     $elements.btnCheckTool.Add_Click({ Test-IntuneWinAppUtilGUI })
-    $elements.btnCreatePackage.Add_Click({ Create-IntuneWinAppPackage })
+    $elements.btnCreatePackage.Add_Click({ New-IntuneWinAppPackage })
     $elements.btnExit.Add_Click({ $window.Close() })
-    $elements.btnRefreshApps.Add_Click({ Refresh-AppList })
+    $elements.btnRefreshApps.Add_Click({ Update-AppList })
     $elements.btnOpenAppFolder.Add_Click({ Start-Process -FilePath "explorer.exe" -ArgumentList $BaseInputPath })
     $elements.btnOpenOutputFolder.Add_Click({
         $selectedApp = $elements.cboAppFolder.SelectedItem
@@ -195,12 +194,12 @@ function Initialize-GUI {
     })
     
     # App-Liste initial laden
-    Refresh-AppList
+    Update-AppList
     
     Write-Log "IntuneWin App Packaging Tool gestartet" "Blue"
 }
 
-function Refresh-AppList {
+function Update-AppList {
     $elements.cboAppFolder.Items.Clear()
     
     # Pruefe, ob der Basis-Input-Pfad existiert
@@ -242,7 +241,7 @@ function Initialize-FoldersGUI {
     Write-Log "   Tools: $(Split-Path $ToolsPath -Leaf)"
     
     # App-Liste aktualisieren
-    Refresh-AppList
+    Update-AppList
 }
 
 function Test-IntuneWinAppUtilGUI {
@@ -554,7 +553,7 @@ function Test-IntuneWinAppUtilGUI {
                     Write-Log "  Trying alternative: $AltUrl"
                     
                     # Use Invoke-WebRequest for better handling
-                    $response = Invoke-WebRequest -Uri $AltUrl -OutFile $IntuneTool -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+                    Invoke-WebRequest -Uri $AltUrl -OutFile $IntuneTool -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
                     
                     if (Test-Path $IntuneTool) {
                         $FileInfo = Get-Item $IntuneTool
@@ -793,7 +792,7 @@ function Test-ExeUninstallParametersGUI {
     return $SelectedParams
 }
 
-function Create-IntuneWinAppPackage {
+function New-IntuneWinAppPackage {
     # Ausgewaehlte App holen
     $InputFolder = $elements.cboAppFolder.SelectedItem
     
@@ -932,7 +931,7 @@ exit /b 0
     # Teste Tool-Funktionalitaet
     try {
         Write-Log "Teste Tool-Version..." "Blue"
-        $versionResult = & $IntuneTool -h 2>&1
+        & $IntuneTool -h 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Tool ist funktionsfaehig" "Green"
         } else {
