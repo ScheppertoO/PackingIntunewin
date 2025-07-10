@@ -1163,20 +1163,9 @@ exit /b 0
     Write-Log "Rueckgabecodes: 0 (Erfolg)$(if ($ExitCode -eq 3010) { ', 3010 (Neustart erforderlich)' } else { '' })"
     Write-Log "====================================="
     
-    # Frage, ob der Ausgabeordner geoeffnet werden soll
-    # Stelle sicher, dass die MessageBox modal zum Hauptfenster ist
-    $window.Dispatcher.Invoke([action]{
-        $result = [System.Windows.Forms.MessageBox]::Show(
-            "Paket erfolgreich erstellt. Moechten Sie den Ausgabeordner oeffnen?",
-            "Paket erstellt",
-            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-            [System.Windows.Forms.MessageBoxIcon]::Information
-        )
-    
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
-            Start-Process -FilePath "explorer.exe" -ArgumentList $ResolvedOutputFolder.Path
-        }
-    })
+    # Ausgabeordner automatisch oeffnen
+    Write-Log "Oeffne Ausgabeordner: $($ResolvedOutputFolder.Path)" "Blue"
+    Start-Process -FilePath "explorer.exe" -ArgumentList $ResolvedOutputFolder.Path
 }
 
 # GUI initialisieren und anzeigen
